@@ -5,7 +5,7 @@ pub use std::{
 pub use typ::{typ, tyuint};
 pub use type_freak::{
     control::SameOp,
-    list::{Cons, Extend, Index, Len, List, Nil, ReduceProduct, Reverse},
+    list::{Cons, Extend, First, Index, Len, List, Nil, PopFront, ReduceProduct, Reverse, ZipEx},
     numeric::UnsignedIntegerDiv,
     List,
 };

@@ -136,8 +136,64 @@ typ! {
         }
     }
 
-    pub fn ConvDim<size, padding, dilation, ksize, stride>(size: Unsigned, padding: Unsigned, dilation: Unsigned, ksize: Unsigned, stride: Unsigned) -> Unsigned {
+    pub fn ConvDim<size, padding, dilation, ksize, stride>(size: Dim, padding: Dim, dilation: Dim, ksize: Dim, stride: Dim) -> Dim {
         UnsignedIntegerDiv(size + 2u * padding - dilation * (ksize - 1u) - 1u, stride) + 1u
+    }
+
+    pub fn ConvDimensions<sizes, paddings, dilations, ksizes, strides>(sizes: Dimensions, paddings: Dimensions, dilations: Dimensions, ksizes: Dimensions, strides: Dimensions) -> Dimensions {
+        let is_dyn = IsDynDimensions(sizes)
+            || IsDynDimensions(paddings)
+            || IsDynDimensions(dilations)
+            || IsDynDimensions(ksizes)
+            || IsDynDimensions(strides);
+
+        if is_dyn {
+            DynDimensions
+        } else {
+            ConvDimsListRecursive(Nil, sizes, paddings, dilations, ksizes, strides)
+        }
+    }
+
+    fn ConvDimsListRecursive<saved, sizes, paddings, dilations, ksizes, strides>(saved: DimsList, sizes: DimsList, paddings: DimsList, dilations: DimsList, ksizes: DimsList, strides: DimsList) -> DimsList {
+        match sizes {
+            #[generics(head, tail: DimsList)]
+            Cons::<head, tail> => {
+                let size = First(sizes);
+                let padding = First(paddings);
+                let dilation = First(dilations);
+                let ksize = First(ksizes);
+                let stride = First(strides);
+
+                let new_sizes = PopFront(sizes);
+                let new_paddings = PopFront(paddings);
+                let new_dilations = PopFront(dilations);
+                let new_ksizes = PopFront(ksizes);
+                let new_strides = PopFront(strides);
+
+                let dim = ConvDim(size, padding, dilation, ksize, stride);
+                let new_saved = Cons::<dim, saved>;
+                ConvDimsListRecursive(new_saved, new_sizes, new_paddings, new_dilations, new_ksizes, new_strides);
+            }
+            Nil => Reverse(saved),
+        }
+    }
+
+    pub fn IsDynDimensions<dims>(dims: Dimensions) -> Bit {
+        match dims {
+            DynDimensions => true,
+            #[generics(head, tail: DimsList)]
+            Cons::<head, tail> => false,
+            Nil => false,
+        }
+    }
+
+    pub fn IsDyn<dim>(dim: Dim) -> Bit {
+        match dim {
+            Dyn => true,
+            UTerm => false,
+            #[generics(uint: Unsigned, bit: Bit)]
+            UInt<uint, bit> => false,
+        }
     }
 }
 
