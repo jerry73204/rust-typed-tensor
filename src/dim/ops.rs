@@ -1,4 +1,4 @@
-use super::{Dim, Dimensions, Dims2D, DimsList, Dyn, DynDimensions};
+use super::{Dim, Dimensions, Dims2, DimsList, Dyn, DynDimensions};
 use crate::common::*;
 use typenum::U1;
 
@@ -34,35 +34,33 @@ typ! {
         match dims {
             DynDimensions => DynDimensions,
             #[generics(p: Dim, q: Dim)]
-            (Dims2D::<p, q>, DynDimensions) => Dims2D::<q, p>,
+            (Dims2::<p, q>, DynDimensions) => Dims2::<q, p>,
         }
     }
-
 
     pub fn MatrixDot<lhs, rhs>(lhs: Dimensions, rhs: Dimensions) -> Dimensions {
         match (lhs, rhs) {
             #[capture(rhs)]
             (DynDimensions, rhs) => DynDimensions,
             #[generics(p: Dim, q: Dim)]
-            (Dims2D::<p, q>, DynDimensions) => DynDimensions,
+            (Dims2::<p, q>, DynDimensions) => DynDimensions,
             #[generics(p: Dim, r: Dim, uint: Unsigned, bit: Bit)]
-            (Dims2D::<p, UInt<uint, bit>>, Dims2D::<UInt<uint, bit>, r>) => Dims2D::<p, r>,
+            (Dims2::<p, UInt<uint, bit>>, Dims2::<UInt<uint, bit>, r>) => Dims2::<p, r>,
             #[generics(p: Dim, r: Dim)]
-            (Dims2D::<p, UTerm>, Dims2D::<UTerm, r>) => Dims2D::<p, r>,
+            (Dims2::<p, UTerm>, Dims2::<UTerm, r>) => Dims2::<p, r>,
             #[generics(p: Dim, r: Dim, uint: Unsigned, bit: Bit)]
-            (Dims2D::<p, Dyn>, Dims2D::<UInt<uint, bit>, r>) => Dims2D::<p, r>,
+            (Dims2::<p, Dyn>, Dims2::<UInt<uint, bit>, r>) => Dims2::<p, r>,
             #[generics(p: Dim, r: Dim)]
-            (Dims2D::<p, Dyn>, Dims2D::<UTerm, r>) => Dims2D::<p, r>,
+            (Dims2::<p, Dyn>, Dims2::<UTerm, r>) => Dims2::<p, r>,
             #[generics(p: Dim, r: Dim, uint: Unsigned, bit: Bit)]
-            (Dims2D::<p, UInt<uint, bit>>, Dims2D::<Dyn, r>) => Dims2D::<p, r>,
+            (Dims2::<p, UInt<uint, bit>>, Dims2::<Dyn, r>) => Dims2::<p, r>,
             #[generics(p: Dim, r: Dim)]
-            (Dims2D::<p, UTerm>, Dims2D::<Dyn, r>) => Dims2D::<p, r>,
+            (Dims2::<p, UTerm>, Dims2::<Dyn, r>) => Dims2::<p, r>,
             #[generics(p: Dim, r: Dim)]
-            (Dims2D::<p, Dyn>, Dims2D::<Dyn, r>) => Dims2D::<p, r>,
+            (Dims2::<p, Dyn>, Dims2::<Dyn, r>) => Dims2::<p, r>,
         }
     }
 
-    // buggy
     pub fn Flatten<input, start, end>(input: Dimensions, start: Dim, end: Dim) -> Dimensions {
         let is_dyn = match (input, start, end) {
             #[capture(start, end)]

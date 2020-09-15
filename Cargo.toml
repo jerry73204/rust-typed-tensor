@@ -10,3 +10,4 @@ edition = "2018"
 typenum = "1.12"
 typ = { git = "https://github.com/jerry73204/typ.git" }
 type-freak = { git = "https://github.com/jerry73204/rust-type-freak.git" }
+tch = "0.2"

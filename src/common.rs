@@ -1,4 +1,7 @@
-pub use std::ops::{Add, Div, Mul, RangeFrom, RangeInclusive, RangeTo, Sub};
+pub use std::{
+    marker::PhantomData,
+    ops::{Add, Div, Mul, RangeFrom, RangeInclusive, RangeTo, Sub},
+};
 pub use typ::{typ, tyuint};
 pub use type_freak::{
     control::SameOp,

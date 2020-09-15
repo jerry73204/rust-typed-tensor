@@ -237,5 +237,5 @@ mod dyn_dim {
 
 // aliases
 
-pub type Dims2D<P, Q> = Cons<P, Cons<Q, Nil>>;
-pub type Dims3D<P, Q, R> = Cons<P, Cons<Q, Cons<R, Nil>>>;
+pub type Dims2<P, Q> = Cons<P, Cons<Q, Nil>>;
+pub type Dims3<P, Q, R> = Cons<P, Cons<Q, Cons<R, Nil>>>;
