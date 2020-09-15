@@ -1,0 +1,12 @@
+[package]
+name = "typed-tensor"
+version = "0.1.0"
+authors = ["jerry73204 <jerry73204@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+typenum = "1.12"
+typ = { git = "https://github.com/jerry73204/typ.git" }
+type-freak = { git = "https://github.com/jerry73204/rust-type-freak.git" }
