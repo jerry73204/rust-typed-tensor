@@ -34,28 +34,23 @@ typ! {
         match dims {
             DynDimensions => DynDimensions,
             #[generics(p: Dim, q: Dim)]
-            (Dims2::<p, q>, DynDimensions) => Dims2::<q, p>,
+            Dims2::<p, q> => Dims2::<q, p>,
         }
     }
 
     pub fn MatrixDot<lhs, rhs>(lhs: Dimensions, rhs: Dimensions) -> Dimensions {
         match (lhs, rhs) {
-            #[capture(rhs)]
-            (DynDimensions, rhs) => DynDimensions,
+            (DynDimensions, DynDimensions) => Dims2::<Dyn, Dyn>,
+            #[generics(q: Dim, r: Dim)]
+            (DynDimensions, Dims2::<q, r>) => Dims2::<Dyn, r>,
             #[generics(p: Dim, q: Dim)]
-            (Dims2::<p, q>, DynDimensions) => DynDimensions,
+            (Dims2::<p, q>, DynDimensions) => Dims2::<p, Dyn>,
             #[generics(p: Dim, r: Dim, uint: Unsigned, bit: Bit)]
             (Dims2::<p, UInt<uint, bit>>, Dims2::<UInt<uint, bit>, r>) => Dims2::<p, r>,
-            #[generics(p: Dim, r: Dim)]
-            (Dims2::<p, UTerm>, Dims2::<UTerm, r>) => Dims2::<p, r>,
             #[generics(p: Dim, r: Dim, uint: Unsigned, bit: Bit)]
             (Dims2::<p, Dyn>, Dims2::<UInt<uint, bit>, r>) => Dims2::<p, r>,
-            #[generics(p: Dim, r: Dim)]
-            (Dims2::<p, Dyn>, Dims2::<UTerm, r>) => Dims2::<p, r>,
             #[generics(p: Dim, r: Dim, uint: Unsigned, bit: Bit)]
             (Dims2::<p, UInt<uint, bit>>, Dims2::<Dyn, r>) => Dims2::<p, r>,
-            #[generics(p: Dim, r: Dim)]
-            (Dims2::<p, UTerm>, Dims2::<Dyn, r>) => Dims2::<p, r>,
             #[generics(p: Dim, r: Dim)]
             (Dims2::<p, Dyn>, Dims2::<Dyn, r>) => Dims2::<p, r>,
         }
@@ -192,7 +187,7 @@ typ! {
             Dyn => true,
             UTerm => false,
             #[generics(uint: Unsigned, bit: Bit)]
-            UInt<uint, bit> => false,
+            UInt::<uint, bit> => false,
         }
     }
 }
@@ -337,6 +332,17 @@ mod tests {
 
     #[test]
     fn test() {
+        let _: SameOp<MatrixTransposeOp<Dims![?]>, Dims![?]> = ();
+        let _: SameOp<MatrixTransposeOp<Dims![2, _]>, Dims![_, 2]> = ();
+        let _: SameOp<MatrixTransposeOp<Dims![2, 3]>, Dims![3, 2]> = ();
+        let _: SameOp<MatrixDotOp<Dims![?], Dims![?]>, Dims![_, _]> = ();
+        let _: SameOp<MatrixDotOp<Dims![?], Dims![3, 5]>, Dims![_, 5]> = ();
+        let _: SameOp<MatrixDotOp<Dims![2, 3], Dims![?]>, Dims![2, _]> = ();
+        let _: SameOp<MatrixDotOp<Dims![2, 3], Dims![3, 5]>, Dims![2, 5]> = ();
+        let _: SameOp<MatrixDotOp<Dims![2, 3], Dims![_, 5]>, Dims![2, 5]> = ();
+        let _: SameOp<MatrixDotOp<Dims![2, _], Dims![3, 5]>, Dims![2, 5]> = ();
+        let _: SameOp<MatrixDotOp<Dims![2, _], Dims![_, 5]>, Dims![2, 5]> = ();
+        let _: SameOp<MatrixDotOp<Dims![_, 3], Dims![_, 5]>, Dims![_, 5]> = ();
         let _: SameOp<FlattenOp<Dims![1, 2, 3], U0, U2>, Dims![6]> = ();
         let _: SameOp<FlattenOp<Dims![1, 2, 3], U1, U2>, Dims![1, 6]> = ();
         let _: SameOp<FlattenOp<Dims![1, 2, 3], U0, U1>, Dims![2, 3]> = ();
