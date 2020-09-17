@@ -107,6 +107,7 @@ typ! {
             Extend(heading, Cons::<product, trailing>)
         }
     }
+
     pub fn IsDynDimensions<dims>(dims: Dimensions) -> Bit {
         match dims {
             DynDimensions => true,
@@ -122,6 +123,43 @@ typ! {
             UTerm => false,
             #[generics(uint: Unsigned, bit: Bit)]
             UInt::<uint, bit> => false,
+        }
+    }
+}
+
+typ! {
+    pub fn Combine<lhs, rhs>(lhs: Dimensions, rhs: Dimensions) -> Dimensions {
+        if IsDynDimensions(lhs) || IsDynDimensions(rhs) {
+            DynDimensions
+        } else {
+            let lhs: DimsList = lhs;
+            let rhs: DimsList = rhs;
+            CombineRecursive(lhs, rhs)
+        }
+    }
+
+    pub fn CombineRecursive<lhs, rhs>(lhs: DimsList, rhs: DimsList) -> DimsList {
+        match (lhs, rhs) {
+            #[generics(ldim: Dim, ltail: DimsList, rdim: Dim, rtail: DimsList)]
+            (Cons::<ldim, ltail>, Cons::<rdim, rtail>) => {
+                let new_dim = if IsDyn(ldim) {
+                    if IsDyn(rdim) {
+                        Dyn
+                    } else {
+                        rdim
+                    }
+                } else if IsDyn(rdim) {
+                    ldim
+                } else {
+                    match (ldim, rdim) {
+                        #[capture(ldim)]
+                        (ldim, ldim) => ldim
+                    }
+                };
+                let new_tail = CombineRecursive(ltail, rtail);
+                Cons::<new_dim, new_tail>
+            }
+            (Nil, Nil) => Nil
         }
     }
 }
@@ -374,6 +412,10 @@ mod tests {
 
     #[test]
     fn test() {
+        let _: SameOp<CombineOp<Dims![?], Dims![2, 3, 4]>, Dims![?]> = ();
+        let _: SameOp<CombineOp<Dims![2, 3, 4], Dims![?]>, Dims![?]> = ();
+        let _: SameOp<CombineOp<Dims![2, 3, 4], Dims![2, 3, 4]>, Dims![2, 3, 4]> = ();
+        let _: SameOp<CombineOp<Dims![_, _, 4], Dims![_, 3, _]>, Dims![_, 3, 4]> = ();
         let _: SameOp<MatrixTransposeOp<Dims![?]>, Dims![?]> = ();
         let _: SameOp<MatrixTransposeOp<Dims![2, _]>, Dims![_, 2]> = ();
         let _: SameOp<MatrixTransposeOp<Dims![2, 3]>, Dims![3, 2]> = ();
