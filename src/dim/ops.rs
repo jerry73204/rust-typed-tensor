@@ -88,39 +88,45 @@ typ! {
     }
 
     pub fn Flatten<input, start, end>(input: Dimensions, start: Dim, end: Dim) -> Dimensions {
-        let is_dyn = match (input, start, end) {
-            #[capture(start, end)]
-            (DynDimensions, start, end) => true,
-            #[generics(head: Dim, tail: DimsList)]
-            #[capture(end)]
-            (Cons::<head, tail>, Dyn, end) => true,
-            #[generics(head: Dim, tail: DimsList)]
-            (Cons::<head, tail>, UTerm, Dyn) => true,
-            #[generics(head: Dim, tail: DimsList)]
-            (Cons::<head, tail>, UTerm, UTerm) => false,
-            #[generics(head: Dim, tail: DimsList, uint: Unsigned, bit: Bit)]
-            (Cons::<head, tail>, UTerm, UInt::<uint, bit>) => false,
-            #[generics(head: Dim, tail: DimsList, uint: Unsigned, bit: Bit)]
-            (Cons::<head, tail>, UInt::<uint, bit>, Dyn) => true,
-            #[generics(head: Dim, tail: DimsList, uint1: Unsigned, bit1: Bit, uint2: Unsigned, bit2: Bit)]
-            (Cons::<head, tail>, UInt::<uint1, bit1>, UInt::<uint2, bit2>) => false,
-        };
-
-        if is_dyn {
+        if IsDynDimensions(input) || IsDyn(start) || IsDyn(end) {
             DynDimensions
         } else {
+            let input: DimsList = input;
+            let start: Unsigned = start;
+            let end: Unsigned = end;
+
             let heading: DimsList = Index(input, RangeTo::<start>);
             let trailing: DimsList = if end + 1u == Len(input) {
                 Nil
             } else {
-                let end_plus_1 = end + 1u;
+                let end_plus_1: Unsigned = end + 1u;
                 Index(input, RangeFrom::<end_plus_1>)
             };
-            let product: Dim = ReduceProduct(Index(input, RangeInclusive::<(start, end)>));
+            let contracted: DimsList = Index(input, RangeInclusive::<(start, end)>);
+            let product: Dim = ReduceProduct(contracted);
             Extend(heading, Cons::<product, trailing>)
         }
     }
+    pub fn IsDynDimensions<dims>(dims: Dimensions) -> Bit {
+        match dims {
+            DynDimensions => true,
+            #[generics(head, tail: DimsList)]
+            Cons::<head, tail> => false,
+            Nil => false,
+        }
+    }
 
+    pub fn IsDyn<dim>(dim: Dim) -> Bit {
+        match dim {
+            Dyn => true,
+            UTerm => false,
+            #[generics(uint: Unsigned, bit: Bit)]
+            UInt::<uint, bit> => false,
+        }
+    }
+}
+
+typ! {
     pub fn PyTorchBroadcast<lhs, rhs>(lhs: Dimensions, rhs: Dimensions) -> Dimensions {
         match (lhs, rhs) {
             #[capture(rhs)]
@@ -129,7 +135,13 @@ typ! {
             (Cons::<dim, tail>, DynDimensions) => DynDimensions,
             #[generics(ldim: Dim, ltail: DimsList, rdim: Dim, rtail: DimsList)]
             (Cons::<ldim, ltail>, Cons::<rdim, rtail>) => {
-                Reverse(PyTorchBroadcastRecursive(Reverse(lhs), Reverse(rhs)))
+                let lhs: DimsList = lhs;
+                let rhs: DimsList = rhs;
+
+                let lhs_rev: DimsList = Reverse(lhs);
+                let rhs_rev: DimsList = Reverse(rhs);
+
+                Reverse(PyTorchBroadcastRecursive(lhs_rev, rhs_rev))
             }
         }
     }
@@ -161,9 +173,12 @@ typ! {
             }
         }
     }
+}
 
+typ! {
     pub fn ConvDim<size, padding, dilation, ksize, stride>(size: Dim, padding: Dim, dilation: Dim, ksize: Dim, stride: Dim) -> Dim {
-        UnsignedIntegerDiv(size + 2u * padding - dilation * (ksize - 1u) - 1u, stride) + 1u
+        let lhs: Dim = size + 2u * padding - dilation * (ksize - 1u) - 1u;
+        DimIntegerDiv(lhs, stride) + 1u
     }
 
     pub fn ConvDimensions<sizes, paddings, dilations, ksizes, strides>(sizes: Dimensions, paddings: Dimensions, dilations: Dimensions, ksizes: Dimensions, strides: Dimensions) -> Dimensions {
@@ -176,7 +191,22 @@ typ! {
         if is_dyn {
             DynDimensions
         } else {
+            let sizes: DimsList = sizes;
+            let paddings: DimsList = paddings;
+            let dilations: DimsList = dilations;
+            let ksizes: DimsList = ksizes;
+            let strides: DimsList = strides;
             ConvDimsListRecursive(Nil, sizes, paddings, dilations, ksizes, strides)
+        }
+    }
+
+    fn DimIntegerDiv<lhs, rhs>(lhs: Dim, rhs: Dim) -> Dim {
+        if IsDyn(lhs) || IsDyn(rhs) {
+            Dyn
+        } else {
+            let lhs: Unsigned = lhs;
+            let rhs: Unsigned = rhs;
+            (lhs - (lhs % rhs)) / rhs
         }
     }
 
@@ -184,54 +214,34 @@ typ! {
         match sizes {
             #[generics(head, tail: DimsList)]
             Cons::<head, tail> => {
-                let size = First(sizes);
-                let padding = First(paddings);
-                let dilation = First(dilations);
-                let ksize = First(ksizes);
-                let stride = First(strides);
+                let size: Dim = First(sizes);
+                let padding: Dim = First(paddings);
+                let dilation: Dim = First(dilations);
+                let ksize: Dim = First(ksizes);
+                let stride: Dim = First(strides);
 
-                let new_sizes = PopFront(sizes);
-                let new_paddings = PopFront(paddings);
-                let new_dilations = PopFront(dilations);
-                let new_ksizes = PopFront(ksizes);
-                let new_strides = PopFront(strides);
+                let new_sizes: DimsList = PopFront(sizes);
+                let new_paddings: DimsList = PopFront(paddings);
+                let new_dilations: DimsList = PopFront(dilations);
+                let new_ksizes: DimsList = PopFront(ksizes);
+                let new_strides: DimsList = PopFront(strides);
 
-                let dim = ConvDim(size, padding, dilation, ksize, stride);
-                let new_saved = Cons::<dim, saved>;
-                ConvDimsListRecursive(new_saved, new_sizes, new_paddings, new_dilations, new_ksizes, new_strides);
+                let dim: Dim = ConvDim(size, padding, dilation, ksize, stride);
+                let new_saved: DimsList = Cons::<dim, saved>;
+                ConvDimsListRecursive(new_saved, new_sizes, new_paddings, new_dilations, new_ksizes, new_strides)
             }
             Nil => Reverse(saved),
-        }
-    }
-
-    pub fn IsDynDimensions<dims>(dims: Dimensions) -> Bit {
-        match dims {
-            DynDimensions => true,
-            #[generics(head, tail: DimsList)]
-            Cons::<head, tail> => false,
-            Nil => false,
-        }
-    }
-
-    pub fn IsDyn<dim>(dim: Dim) -> Bit {
-        match dim {
-            Dyn => true,
-            UTerm => false,
-            #[generics(uint: Unsigned, bit: Bit)]
-            UInt::<uint, bit> => false,
         }
     }
 }
 
 typ! {
     pub fn Cat<inputs, index>(inputs: List, index: Dim) -> Dimensions {
-        match (CheckDynDimensions(inputs), index) {
-            #[capture(index)]
-            (B1, index) => DynDimensions,
-            (B0, Dyn) => DynDimensions,
-            (B0, UTerm) => MergeLeadingDims(Nil, inputs, index),
-            #[generics(uint: Unsigned, bit: Bit)]
-            (B0, UInt::<uint, bit>) => MergeLeadingDims(Nil, inputs, index),
+        if CheckDynDimensions(inputs) || IsDyn(index) {
+            DynDimensions
+        } else {
+            let index: Unsigned = index;
+            MergeLeadingDims(Nil, inputs, index)
         }
     }
 
@@ -245,7 +255,8 @@ typ! {
             let expect = ExtractFirstDim(Dyn, remaining);
             let new_remaining = RemoveExpectedDims(Nil, remaining, expect);
             let new_saved = Cons::<expect, saved>;
-            MergeLeadingDims(new_saved, new_remaining, index - 1u)
+            let new_index: Unsigned = index - 1u;
+            MergeLeadingDims(new_saved, new_remaining, new_index)
         }
     }
 
