@@ -45,6 +45,6 @@ macro_rules! dims {
         type_freak::list::Nil
     };
     [$dim:literal $(, $remaining:tt)* $(,)?] => {
-        type_freak::list::Cons { head: tyuint!($dim), tail: dims![$($remaining),*] }
+        type_freak::list::Cons { head: <tyuint!($dim)>::new(), tail: dims![$($remaining),*] }
     };
 }
