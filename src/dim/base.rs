@@ -101,12 +101,14 @@ where
 }
 
 /// The dimensions with runtime length.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DynDimensions(pub Vec<usize>);
 
 mod dyn_dim {
     use super::*;
 
     /// Single dynamic dimension.
+    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct Dyn(pub usize);
 
     // add
