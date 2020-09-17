@@ -30,6 +30,37 @@ typ! {
         }
     }
 
+    // buggy
+    // pub fn TensorDot<lhs, rhs, ndims>(lhs: Dimensions, rhs: Dimensions, ndims: Dim) -> Dimensions {
+    //     if IsDynDimensions(lhs) || IsDynDimensions(rhs) || IsDyn(ndims) {
+    //         DynDimensions
+    //     } else {
+    //         let ndims: Unsigned = ndims;
+    //         let llen = Len(lhs);
+    //         let rlen = Len(rhs);
+
+    //         let lcontracted: DimsList = {
+    //             let from: Unsigned = llen - ndims;
+    //             Index(lhs, RangeFrom::<from>)
+    //         };
+    //         let rconstracted: DimsList = Index(rhs, RangeTo::<ndims>);
+
+    //         let lremaining: DimsList = {
+    //             let to: Unsigned = llen - ndims;
+    //             Index(lhs, RangeTo::<to>)
+    //         };
+    //         let rremaining: DimsList = Index(rhs, RangeFrom::<ndims>);
+
+    //         match (lcontracted, rcontracted) {
+    //             #[capture(lcontracted)]
+    //             (lcontracted, lcontracted) => {
+    //                 Nil
+    //                 // Extend(lremaiing, rremaining)
+    //             }
+    //         }
+    //     }
+    // }
+
     pub fn MatrixTranspose<dims>(dims: Dimensions) -> Dimensions {
         match dims {
             DynDimensions => DynDimensions,

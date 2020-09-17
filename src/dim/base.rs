@@ -1,40 +1,107 @@
+use super::{impls, ops};
 use crate::common::*;
 
 pub use dyn_dim::*;
 
 /// Marks the list of dimensions.
-pub trait Dimensions {}
+pub trait Dimensions
+where
+    Self: Sized,
+{
+    fn len(&self) -> usize
+    where
+        (): impls::LenImpl<Self>,
+    {
+        <() as impls::LenImpl<Self>>::impl_len(self)
+    }
+
+    fn to_vec(&self) -> Vec<usize>
+    where
+        (): impls::ToVecImpl<Self>,
+    {
+        <() as impls::ToVecImpl<_>>::impl_to_vec(self)
+    }
+
+    fn matrix_dot<Rhs>(&self, rhs: &Rhs) -> ops::MatrixDotOp<Self, Rhs>
+    where
+        Self: Sized,
+        Rhs: Dimensions,
+        (): ops::MatrixDot<Self, Rhs>
+            + impls::MatrixDotImpl<Self, Rhs, ops::MatrixDotOp<Self, Rhs>>,
+    {
+        <() as impls::MatrixDotImpl<Self, Rhs, ops::MatrixDotOp<Self, Rhs>>>::impl_matrix_dot(
+            self, rhs,
+        )
+    }
+}
+
 impl Dimensions for DynDimensions {}
+
 impl<Head, Tail> Dimensions for Cons<Head, Tail>
 where
     Head: Dim,
     Tail: DimsList,
 {
 }
+
 impl Dimensions for Nil {}
 
 pub trait DimsList
 where
-    Self: List,
+    Self: List + Dimensions,
 {
 }
+
 impl<Head, Tail> DimsList for Cons<Head, Tail>
 where
     Head: Dim,
     Tail: DimsList,
 {
 }
+
 impl DimsList for Nil {}
 
-/// Marks a single dimension.
-pub trait Dim {}
+pub trait StaticDims
+where
+    Self: DimsList,
+{
+}
+impl<Head, Tail> StaticDims for Cons<Head, Tail>
+where
+    Head: Unsigned + Dim,
+    Tail: List + StaticDims,
+{
+}
 
-impl Dim for Dyn {}
-impl Dim for UTerm {}
-impl<U, B> Dim for UInt<U, B> {}
+impl StaticDims for Nil {}
+
+/// Marks a single dimension.
+pub trait Dim {
+    fn to_usize(&self) -> usize;
+}
+
+impl Dim for Dyn {
+    fn to_usize(&self) -> usize {
+        self.0
+    }
+}
+impl Dim for UTerm {
+    fn to_usize(&self) -> usize {
+        Self::USIZE
+    }
+}
+impl<U, B> Dim for UInt<U, B>
+where
+    U: Unsigned,
+    B: Bit,
+{
+    fn to_usize(&self) -> usize {
+        Self::USIZE
+    }
+}
 
 /// The dimensions with runtime length.
-pub struct DynDimensions(Vec<usize>);
+pub struct DynDimensions(pub Vec<usize>);
 
 mod dyn_dim {
     use super::*;
@@ -239,3 +306,6 @@ mod dyn_dim {
 
 pub type Dims2<P, Q> = Cons<P, Cons<Q, Nil>>;
 pub type Dims3<P, Q, R> = Cons<P, Cons<Q, Cons<R, Nil>>>;
+
+#[cfg(test)]
+mod tests {}
