@@ -1,6 +1,42 @@
 use super::{ops, *};
 use crate::{common::*, dims_t, DimsT};
 
+// into dim
+
+pub trait IntoDim {
+    type Output;
+
+    fn into_dim(self) -> Self::Output;
+}
+
+impl IntoDim for usize {
+    type Output = Dyn;
+
+    fn into_dim(self) -> Self::Output {
+        Dyn(self)
+    }
+}
+
+impl IntoDim for UTerm {
+    type Output = Self;
+
+    fn into_dim(self) -> Self::Output {
+        Self::new()
+    }
+}
+
+impl<U, B> IntoDim for UInt<U, B>
+where
+    U: Unsigned,
+    B: Bit,
+{
+    type Output = Self;
+
+    fn into_dim(self) -> Self::Output {
+        Self::new()
+    }
+}
+
 // len
 
 pub trait LenImpl<Dims>

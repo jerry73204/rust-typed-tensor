@@ -1,5 +1,5 @@
 use super::{impls, ops};
-use crate::common::*;
+use crate::{common::*, dims_t, DimsT};
 
 pub use dyn_dim::*;
 
@@ -8,6 +8,34 @@ pub trait Dimensions
 where
     Self: Sized,
 {
+    fn new_dyn_dims(dims: Vec<usize>) -> DynDimensions {
+        DynDimensions(dims)
+    }
+
+    fn new_dims1<P>(first: P) -> Dims1<P::Output>
+    where
+        P: impls::IntoDim,
+    {
+        dims_t![first.into_dim()]
+    }
+
+    fn new_dims2<P, Q>(first: P, second: Q) -> Dims2<P::Output, Q::Output>
+    where
+        P: impls::IntoDim,
+        Q: impls::IntoDim,
+    {
+        dims_t![first.into_dim(), second.into_dim()]
+    }
+
+    fn new_dims3<P, Q, R>(first: P, second: Q, third: R) -> Dims3<P::Output, Q::Output, R::Output>
+    where
+        P: impls::IntoDim,
+        Q: impls::IntoDim,
+        R: impls::IntoDim,
+    {
+        dims_t![first.into_dim(), second.into_dim(), third.into_dim()]
+    }
+
     fn len(&self) -> usize
     where
         (): impls::LenImpl<Self>,
@@ -309,8 +337,9 @@ mod dyn_dim {
 
 // aliases
 
-pub type Dims2<P, Q> = Cons<P, Cons<Q, Nil>>;
-pub type Dims3<P, Q, R> = Cons<P, Cons<Q, Cons<R, Nil>>>;
+pub type Dims1<P> = DimsT![P];
+pub type Dims2<P, Q> = DimsT![P, Q];
+pub type Dims3<P, Q, R> = DimsT![P, Q, R];
 
 #[cfg(test)]
 mod tests {
