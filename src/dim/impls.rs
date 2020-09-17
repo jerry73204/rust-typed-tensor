@@ -1,4 +1,4 @@
-use super::*;
+use super::{ops, *};
 use crate::{common::*, dims_t, DimsT};
 
 // len
@@ -86,33 +86,34 @@ where
     Rhs: Dimensions,
     Out: Dimensions,
 {
-    fn impl_matrix_dot(lhs: &Lhs, rhs: &Rhs) -> Out;
+    type Output;
+    fn impl_matrix_dot(lhs: &Lhs, rhs: &Rhs) -> Self::Output;
 }
 
 impl<Lhs, Rhs> MatrixDotImpl<Lhs, Rhs, DynDimensions> for ()
 where
     Lhs: Dimensions,
     Rhs: Dimensions,
-    (): ToVecImpl<Lhs>,
-    (): ToVecImpl<Rhs>,
+    (): ToVecImpl<Lhs> + ToVecImpl<Rhs>,
 {
-    fn impl_matrix_dot(lhs: &Lhs, rhs: &Rhs) -> DynDimensions {
+    type Output = Result<DynDimensions>;
+
+    fn impl_matrix_dot(lhs: &Lhs, rhs: &Rhs) -> Self::Output {
         let ldims = <()>::impl_to_vec(lhs);
         let rdims = <()>::impl_to_vec(rhs);
 
         // TODO: return Result instead
-        assert!(
+        ensure!(
             ldims.len() == 2,
             "the left hand side dimension size is not 2"
         );
-        assert!(
+        ensure!(
             rdims.len() == 2,
             "the right hand side dimension size is not 2"
         );
-        assert!(ldims[1] == rdims[0], "contracted dimension mismatch");
-        assert!(ldims[1] != 0, "the contracted dimension must not be zero");
-
-        DynDimensions(vec![ldims[0], rdims[1]])
+        ensure!(ldims[1] == rdims[0], "contracted dimension mismatch");
+        ensure!(ldims[1] != 0, "the contracted dimension must not be zero");
+        Ok(DynDimensions(vec![ldims[0], rdims[1]]))
     }
 }
 
@@ -124,10 +125,12 @@ where
     U: Unsigned,
     B: Bit,
 {
+    type Output = DimsT![P, R];
+
     fn impl_matrix_dot(
         lhs: &DimsT![P, UInt::<U, B>],
         rhs: &DimsT![UInt::<U, B>, R],
-    ) -> DimsT![P, R] {
+    ) -> Self::Output {
         dims_t![lhs.head.clone(), rhs.tail.head.clone()]
     }
 }
@@ -139,12 +142,14 @@ where
     U: Unsigned,
     B: Bit,
 {
-    fn impl_matrix_dot(lhs: &DimsT![P, Dyn], rhs: &DimsT![UInt::<U, B>, R]) -> DimsT![P, R] {
-        assert!(
+    type Output = Result<DimsT![P, R]>;
+
+    fn impl_matrix_dot(lhs: &DimsT![P, Dyn], rhs: &DimsT![UInt::<U, B>, R]) -> Self::Output {
+        ensure!(
             lhs.tail.head.0 == UInt::<U, B>::USIZE,
             "dimensions mismatch"
         );
-        dims_t![lhs.head.clone(), rhs.tail.head.clone()]
+        Ok(dims_t![lhs.head.clone(), rhs.tail.head.clone()])
     }
 }
 
@@ -155,8 +160,12 @@ where
     U: Unsigned,
     B: Bit,
 {
-    fn impl_matrix_dot(lhs: &DimsT![P, UInt::<U, B>], rhs: &DimsT![Dyn, R]) -> DimsT![P, R] {
-        assert!(rhs.head.0 == UInt::<U, B>::USIZE, "dimensions mismatch");
-        dims_t![lhs.head.clone(), rhs.tail.head.clone()]
+    type Output = Result<DimsT![P, R]>;
+
+    fn impl_matrix_dot(lhs: &DimsT![P, UInt::<U, B>], rhs: &DimsT![Dyn, R]) -> Self::Output {
+        ensure!(rhs.head.0 == UInt::<U, B>::USIZE, "dimensions mismatch");
+        Ok(dims_t![lhs.head.clone(), rhs.tail.head.clone()])
     }
 }
+
+pub type MatrixDotImplOp<Lhs, Rhs, Out> = <() as MatrixDotImpl<Lhs, Rhs, Out>>::Output;

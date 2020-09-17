@@ -22,7 +22,10 @@ where
         <() as impls::ToVecImpl<_>>::impl_to_vec(self)
     }
 
-    fn matrix_dot<Rhs>(&self, rhs: &Rhs) -> ops::MatrixDotOp<Self, Rhs>
+    fn matrix_dot<Rhs>(
+        &self,
+        rhs: &Rhs,
+    ) -> impls::MatrixDotImplOp<Self, Rhs, ops::MatrixDotOp<Self, Rhs>>
     where
         Self: Sized,
         Rhs: Dimensions,
@@ -310,4 +313,16 @@ pub type Dims2<P, Q> = Cons<P, Cons<Q, Nil>>;
 pub type Dims3<P, Q, R> = Cons<P, Cons<Q, Cons<R, Nil>>>;
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+    use crate::dims;
+
+    #[test]
+    fn len_test() {
+        assert_eq!(dims![].len(), 0);
+        assert_eq!(dims![3].len(), 1);
+        assert_eq!(dims![1, 2, 3].len(), 3);
+        assert_eq!(DynDimensions(vec![1, 2, 3]).len(), 3);
+        assert_eq!(dims![2, 3].matrix_dot(&dims![3, 5]), dims![2, 5]);
+    }
+}
