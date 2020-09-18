@@ -92,19 +92,19 @@ where
 
 impl DimsList for Nil {}
 
-pub trait StaticDims
+pub trait StaticDimsList
 where
     Self: DimsList,
 {
 }
-impl<Head, Tail> StaticDims for Cons<Head, Tail>
+impl<Head, Tail> StaticDimsList for Cons<Head, Tail>
 where
     Head: Unsigned + Dim,
-    Tail: List + StaticDims,
+    Tail: List + StaticDimsList,
 {
 }
 
-impl StaticDims for Nil {}
+impl StaticDimsList for Nil {}
 
 /// Marks a single dimension.
 pub trait Dim {
