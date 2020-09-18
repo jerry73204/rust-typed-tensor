@@ -6,10 +6,7 @@ pub use std::{
 pub use typ::{typ, tyuint};
 pub use type_freak::{
     control::{Same, SameOp},
-    list::{
-        Cons, Extend, First, Get, Index, Len, List, Nil, PopFront, ReduceProduct, Remove, Reverse,
-        ZipEx,
-    },
+    list::{self, Cons, List, Nil},
     numeric::UnsignedIntegerDiv,
     List,
 };

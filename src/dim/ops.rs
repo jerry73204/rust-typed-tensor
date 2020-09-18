@@ -1,4 +1,4 @@
-use super::{Dim, Dimensions, Dims2, DimsList, Dyn, DynDimensions};
+use super::{Dim, Dimensions, Dims2, DimsList, Dyn, DynDimensions, StaticDimsList};
 use crate::common::*;
 use typenum::U1;
 
@@ -95,16 +95,16 @@ typ! {
             let start: Unsigned = start;
             let end: Unsigned = end;
 
-            let heading: DimsList = Index(input, RangeTo::<start>);
-            let trailing: DimsList = if end + 1u == Len(input) {
+            let heading: DimsList = list::Index(input, RangeTo::<start>);
+            let trailing: DimsList = if end + 1u == list::Len(input) {
                 Nil
             } else {
                 let end_plus_1: Unsigned = end + 1u;
-                Index(input, RangeFrom::<end_plus_1>)
+                list::Index(input, RangeFrom::<end_plus_1>)
             };
-            let contracted: DimsList = Index(input, RangeInclusive::<(start, end)>);
-            let product: Dim = ReduceProduct(contracted);
-            Extend(heading, Cons::<product, trailing>)
+            let contracted: DimsList = list::Index(input, RangeInclusive::<(start, end)>);
+            let product: Dim = list::ReduceProduct(contracted);
+            list::Extend(heading, Cons::<product, trailing>)
         }
     }
 
@@ -114,14 +114,28 @@ typ! {
         } else {
             let input: DimsList = input;
             let dim: Unsigned = dim;
-            let size: Dim = Get(input, dim);
+            let size: Dim = list::Get(input, dim);
 
             if IsDyn(index) || IsDyn(size) {
-                Remove(input, dim)
+                list::Remove(input, dim)
             } else {
                 match index < size {
-                    B1 => Remove(input, dim)
+                    B1 => list::Remove(input, dim)
                 }
+            }
+        }
+    }
+
+    pub fn UnSqueeze<input, index>(input: Dimensions, index: Dim) -> Dimensions {
+        if IsDynDimensions(input) || IsDyn(index) {
+            DynDimensions
+        } else {
+            let input: DimsList = input;
+            let index: Unsigned = index;
+            if index == list::Len(input) {
+                list::PushBack(input, 1u)
+            } else {
+                list::Insert(input, index, 1u)
             }
         }
     }
@@ -141,6 +155,22 @@ typ! {
             UTerm => false,
             #[generics(uint: Unsigned, bit: Bit)]
             UInt::<uint, bit> => false,
+        }
+    }
+}
+
+typ! {
+    pub fn ContainsDyn<input>(input: DimsList) -> Bit {
+        match input {
+            #[generics(dim: Dim, tail: DimsList)]
+            Cons::<dim, tail> => {
+                if IsDyn(dim) {
+                    true
+                } else {
+                    ContainsDyn(tail)
+                }
+            }
+            Nil => false,
         }
     }
 }
@@ -194,10 +224,10 @@ typ! {
                 let lhs: DimsList = lhs;
                 let rhs: DimsList = rhs;
 
-                let lhs_rev: DimsList = Reverse(lhs);
-                let rhs_rev: DimsList = Reverse(rhs);
+                let lhs_rev: DimsList = list::Reverse(lhs);
+                let rhs_rev: DimsList = list::Reverse(rhs);
 
-                Reverse(PyTorchBroadcastRecursive(lhs_rev, rhs_rev))
+                list::Reverse(PyTorchBroadcastRecursive(lhs_rev, rhs_rev))
             }
         }
     }
@@ -270,23 +300,23 @@ typ! {
         match sizes {
             #[generics(head, tail: DimsList)]
             Cons::<head, tail> => {
-                let size: Dim = First(sizes);
-                let padding: Dim = First(paddings);
-                let dilation: Dim = First(dilations);
-                let ksize: Dim = First(ksizes);
-                let stride: Dim = First(strides);
+                let size: Dim = list::First(sizes);
+                let padding: Dim = list::First(paddings);
+                let dilation: Dim = list::First(dilations);
+                let ksize: Dim = list::First(ksizes);
+                let stride: Dim = list::First(strides);
 
-                let new_sizes: DimsList = PopFront(sizes);
-                let new_paddings: DimsList = PopFront(paddings);
-                let new_dilations: DimsList = PopFront(dilations);
-                let new_ksizes: DimsList = PopFront(ksizes);
-                let new_strides: DimsList = PopFront(strides);
+                let new_sizes: DimsList = list::PopFront(sizes);
+                let new_paddings: DimsList = list::PopFront(paddings);
+                let new_dilations: DimsList = list::PopFront(dilations);
+                let new_ksizes: DimsList = list::PopFront(ksizes);
+                let new_strides: DimsList = list::PopFront(strides);
 
                 let dim: Dim = ConvDim(size, padding, dilation, ksize, stride);
                 let new_saved: DimsList = Cons::<dim, saved>;
                 ConvDimsListRecursive(new_saved, new_sizes, new_paddings, new_dilations, new_ksizes, new_strides)
             }
-            Nil => Reverse(saved),
+            Nil => list::Reverse(saved),
         }
     }
 }
@@ -328,7 +358,7 @@ typ! {
             #[generics(tail: List)]
             Cons::<Nil, tail> => {
                 AssertAllEmpty(remaining);
-                Reverse(saved)
+                list::Reverse(saved)
             }
         }
     }
@@ -374,7 +404,7 @@ typ! {
         match remaining {
             #[generics(dim: Dim, dims_tail: DimsList, tail: List)]
             Cons::<Cons::<dim, dims_tail>, tail> => RemoveDims(Cons::<dims_tail, saved>, tail),
-            Nil => Reverse(saved),
+            Nil => list::Reverse(saved),
         }
     }
 
@@ -393,7 +423,7 @@ typ! {
                     (UInt::<uint, bit>, UInt::<uint, bit>) => RemoveExpectedDims(Cons::<dims_tail, saved>, tail, expect),
                 }
             }
-            Nil => Reverse(saved),
+            Nil => list::Reverse(saved),
         }
     }
 
@@ -418,6 +448,69 @@ typ! {
                 }
             }
             Nil => UTerm,
+        }
+    }
+}
+
+typ! {
+    pub fn SqueezeAll<input>(input: Dimensions) -> Dimensions {
+        if IsDynDimensions(input) {
+            DynDimensions
+        } else {
+            let input: DimsList = input;
+            if ContainsDyn(input) {
+                DynDimensions
+            } else {
+                let input: StaticDimsList = input;
+                SqueezeAllRecursive(Nil, input)
+            }
+        }
+    }
+
+    pub fn SqueezeAllRecursive<saved, remaining>(saved: StaticDimsList, remaining: StaticDimsList) -> StaticDimsList {
+        match remaining {
+            #[generics(dim: Unsigned, tail: StaticDimsList)]
+            Cons::<dim, tail> => {
+                let new_saved: StaticDimsList = if dim == 1u {
+                    saved
+                } else {
+                    Cons::<dim, saved>
+                };
+                SqueezeAllRecursive(new_saved, tail)
+            }
+            Nil => list::Reverse(saved),
+        }
+    }
+}
+
+typ! {
+    pub fn Squeeze<input, index>(input: Dimensions, index: Dim) -> Dimensions {
+        if IsDynDimensions(input) || IsDyn(index) {
+            DynDimensions
+        } else {
+            let input: DimsList = input;
+            let index: Unsigned = index;
+            SqueezeRecursive(Nil, input, index)
+        }
+    }
+
+    pub fn SqueezeRecursive<saved, remaining, index>(saved: DimsList, remaining: DimsList, index: Unsigned) -> DimsList {
+        if index == 0u {
+            match remaining {
+                #[generics(tail: DimsList)]
+                Cons::<U1, tail> => list::Extend(list::Reverse(saved), tail),
+                #[generics(tail: DimsList)]
+                Cons::<Dyn, tail> => list::Extend(list::Reverse(saved), tail),
+            }
+        } else {
+            match remaining {
+                #[generics(dim: Dim, tail: DimsList)]
+                Cons::<dim, tail> => {
+                    let new_saved = Cons::<dim, saved>;
+                    let new_index: Unsigned = index - 1u;
+                    SqueezeRecursive(new_saved, tail, new_index)
+                }
+            }
         }
     }
 }
@@ -476,5 +569,17 @@ mod tests {
         let _: SameOp<IndexSelectOp<Dims![2, _, 4], U1, U2>, Dims![2, 4]> = ();
         let _: SameOp<IndexSelectOp<Dims![2, 3, 4], U1, Dyn>, Dims![2, 4]> = ();
         let _: SameOp<IndexSelectOp<Dims![2, _, 4], U1, Dyn>, Dims![2, 4]> = ();
+        let _: SameOp<UnSqueezeOp<Dims![?], U1>, Dims![?]> = ();
+        let _: SameOp<UnSqueezeOp<Dims![3, 7, 4], Dyn>, Dims![?]> = ();
+        let _: SameOp<UnSqueezeOp<Dims![3, 7, 4], U0>, Dims![1, 3, 7, 4]> = ();
+        let _: SameOp<UnSqueezeOp<Dims![3, 7, 4], U2>, Dims![3, 7, 1, 4]> = ();
+        let _: SameOp<UnSqueezeOp<Dims![3, 7, 4], U3>, Dims![3, 7, 4, 1]> = ();
+        let _: SameOp<SqueezeAllOp<Dims![?]>, Dims![?]> = ();
+        let _: SameOp<SqueezeAllOp<Dims![2, _, 3]>, Dims![?]> = ();
+        let _: SameOp<SqueezeAllOp<Dims![1, 2, 1, 3, 1, 4, 1]>, Dims![2, 3, 4]> = ();
+        let _: SameOp<SqueezeOp<Dims![?], U1>, Dims![?]> = ();
+        let _: SameOp<SqueezeOp<Dims![2, 1, 3], Dyn>, Dims![?]> = ();
+        let _: SameOp<SqueezeOp<Dims![2, 1, 3], U1>, Dims![2, 3]> = ();
+        let _: SameOp<SqueezeOp<Dims![2, _, 3], U1>, Dims![2, 3]> = ();
     }
 }
