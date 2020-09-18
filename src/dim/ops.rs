@@ -108,6 +108,24 @@ typ! {
         }
     }
 
+    pub fn IndexSelect<input, dim, index>(input: Dimensions, dim: Dim, index: Dim) -> Dimensions {
+        if IsDynDimensions(input) || IsDyn(dim) {
+            DynDimensions
+        } else {
+            let input: DimsList = input;
+            let dim: Unsigned = dim;
+            let size: Dim = Get(input, dim);
+
+            if IsDyn(index) || IsDyn(size) {
+                Remove(input, dim)
+            } else {
+                match index < size {
+                    B1 => Remove(input, dim)
+                }
+            }
+        }
+    }
+
     pub fn IsDynDimensions<dims>(dims: Dimensions) -> Bit {
         match dims {
             DynDimensions => true,
@@ -451,5 +469,12 @@ mod tests {
             CatOp<List![Dims![_, 7, 1, 3], Dims![2, _, 8, _], Dims![2, 7, 4, _]], tyuint!(2)>,
             Dims![2, 7, 13, 3],
         > = ();
+        let _: SameOp<IndexSelectOp<Dims![?], U0, U2>, Dims![?]> = ();
+        let _: SameOp<IndexSelectOp<Dims![2, 3, 4], Dyn, U2>, Dims![?]> = ();
+        let _: SameOp<IndexSelectOp<Dims![3], U0, U2>, Dims![]> = ();
+        let _: SameOp<IndexSelectOp<Dims![2, 3, 4], U1, U2>, Dims![2, 4]> = ();
+        let _: SameOp<IndexSelectOp<Dims![2, _, 4], U1, U2>, Dims![2, 4]> = ();
+        let _: SameOp<IndexSelectOp<Dims![2, 3, 4], U1, Dyn>, Dims![2, 4]> = ();
+        let _: SameOp<IndexSelectOp<Dims![2, _, 4], U1, Dyn>, Dims![2, 4]> = ();
     }
 }

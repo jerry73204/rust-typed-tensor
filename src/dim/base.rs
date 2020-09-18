@@ -135,6 +135,12 @@ where
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DynDimensions(pub Vec<usize>);
 
+// aliases
+
+pub type Dims1<P> = DimsT![P];
+pub type Dims2<P, Q> = DimsT![P, Q];
+pub type Dims3<P, Q, R> = DimsT![P, Q, R];
+
 mod dyn_dim {
     use super::*;
 
@@ -334,12 +340,6 @@ mod dyn_dim {
         }
     }
 }
-
-// aliases
-
-pub type Dims1<P> = DimsT![P];
-pub type Dims2<P, Q> = DimsT![P, Q];
-pub type Dims3<P, Q, R> = DimsT![P, Q, R];
 
 #[cfg(test)]
 mod tests {
