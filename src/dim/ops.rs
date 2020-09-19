@@ -323,7 +323,7 @@ typ! {
 
 typ! {
     pub fn Cat<inputs, index>(inputs: List, index: Dim) -> Dimensions {
-        if CheckDynDimensions(inputs) || IsDyn(index) {
+        if AnyDynDimensions(inputs) || IsDyn(index) {
             DynDimensions
         } else {
             let index: Unsigned = index;
@@ -515,6 +515,53 @@ typ! {
     }
 }
 
+typ! {
+    pub fn AllDyn<dims>(dims: DimsList) -> Bit {
+        match dims {
+            #[generics(tail: DimsList)]
+            Cons::<DynDim, tail> => AllDyn(tail),
+            #[generics(tail: DimsList)]
+            Cons::<UTerm, tail> => false,
+            #[generics(uint: Unsigned, bit: Bit, tail: DimsList)]
+            Cons::<UInt<uint, bit>, tail> => false,
+            Nil => true,
+        }
+    }
+
+    pub fn AnyDyn<dims>(dims: DimsList) -> Bit {
+        match dims {
+            #[generics(tail: DimsList)]
+            Cons::<DynDim, tail> => true,
+            #[generics(tail: DimsList)]
+            Cons::<UTerm, tail> => AnyDyn(tail),
+            #[generics(uint: Unsigned, bit: Bit, tail: DimsList)]
+            Cons::<UInt<uint, bit>, tail> => AnyDyn(tail),
+            Nil => false,
+        }
+    }
+
+    pub fn AllDynDimensions<inputs>(inputs: List) -> Bit {
+        match inputs {
+            #[generics(tail: List)]
+            Cons::<DynDimensions, tail> => AllDynDimensions(tail),
+            #[generics(dim: Dim, dims_tail: DimsList, tail: List)]
+            Cons::<Cons<dim, dims_tail>, tail> => false,
+            Nil => true,
+        }
+    }
+
+    pub fn AnyDynDimensions<inputs>(inputs: List) -> Bit {
+        match inputs {
+            #[generics(tail: List)]
+            Cons::<DynDimensions, tail> => true,
+            #[generics(dim: Dim, dims_tail: DimsList, tail: List)]
+            Cons::<Cons<dim, dims_tail>, tail> => AnyDynDimensions(tail),
+            Nil => false,
+        }
+    }
+
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -581,5 +628,17 @@ mod tests {
         let _: SameOp<SqueezeOp<Dims![2, 1, 3], DynDim>, Dims![?]> = ();
         let _: SameOp<SqueezeOp<Dims![2, 1, 3], U1>, Dims![2, 3]> = ();
         let _: SameOp<SqueezeOp<Dims![2, _, 3], U1>, Dims![2, 3]> = ();
+        let _: SameOp<AllDynOp<Dims![]>, B1> = ();
+        let _: SameOp<AllDynOp<Dims![_, 4, _]>, B0> = ();
+        let _: SameOp<AllDynOp<Dims![_, _, _]>, B1> = ();
+        let _: SameOp<AnyDynOp<Dims![]>, B0> = ();
+        let _: SameOp<AnyDynOp<Dims![_, 4, _]>, B1> = ();
+        let _: SameOp<AnyDynOp<Dims![_, _, _]>, B1> = ();
+        let _: SameOp<AnyDynOp<Dims![3, 4, 5]>, B0> = ();
+        let _: SameOp<AllDynDimensionsOp<List![Dims![?], Dims![_]]>, B0> = ();
+        let _: SameOp<AllDynDimensionsOp<List![Dims![?], Dims![?]]>, B1> = ();
+        let _: SameOp<AnyDynDimensionsOp<List![Dims![3], Dims![_]]>, B0> = ();
+        let _: SameOp<AnyDynDimensionsOp<List![Dims![?], Dims![_]]>, B1> = ();
+        let _: SameOp<AnyDynDimensionsOp<List![Dims![?], Dims![?]]>, B1> = ();
     }
 }
