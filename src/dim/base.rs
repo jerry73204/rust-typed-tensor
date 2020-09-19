@@ -52,19 +52,13 @@ mod dimensions {
             <() as impls::ToVecImpl<_>>::impl_to_vec(self)
         }
 
-        fn matrix_dot<Rhs>(
-            &self,
-            rhs: &Rhs,
-        ) -> impls::MatrixDotImplOp<Self, Rhs, ops::MatrixDotOp<Self, Rhs>>
+        fn matrix_dot<Rhs>(&self, rhs: &Rhs) -> impls::MatrixDotImplOp<Self, Rhs>
         where
             Self: Sized,
             Rhs: Dimensions,
-            (): ops::MatrixDot<Self, Rhs>
-                + impls::MatrixDotImpl<Self, Rhs, ops::MatrixDotOp<Self, Rhs>>,
+            (): impls::MatrixDotImpl<Self, Rhs>,
         {
-            <() as impls::MatrixDotImpl<Self, Rhs, ops::MatrixDotOp<Self, Rhs>>>::impl_matrix_dot(
-                self, rhs,
-            )
+            <() as impls::MatrixDotImpl<Self, Rhs>>::impl_matrix_dot(self, rhs)
         }
     }
 
