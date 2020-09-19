@@ -24,40 +24,19 @@ mod dimensions {
     where
         Self: Sized,
     {
+        fn new<Shape>(shape: Shape) -> Self
+        where
+            (): impls::NewDimsImpl<Shape, Self>,
+        {
+            <() as impls::NewDimsImpl<Shape, Self>>::impl_new(shape)
+        }
+
         fn to_dyn(&self) -> DynDimensions
         where
             (): impls::ToDynImpl<Self>,
         {
             <() as impls::ToDynImpl<Self>>::impl_to_dyn(self)
         }
-
-        // fn new_dyn_dims(dims: Vec<usize>) -> DynDimensions {
-        //     DynDimensions(dims)
-        // }
-
-        // fn new_dims1<P>(first: P) -> Dims1<P::Output>
-        // where
-        //     P: impls::IntoDim,
-        // {
-        //     dims_t![first.into_dim()]
-        // }
-
-        // fn new_dims2<P, Q>(first: P, second: Q) -> Dims2<P::Output, Q::Output>
-        // where
-        //     P: impls::IntoDim,
-        //     Q: impls::IntoDim,
-        // {
-        //     dims_t![first.into_dim(), second.into_dim()]
-        // }
-
-        // fn new_dims3<P, Q, R>(first: P, second: Q, third: R) -> Dims3<P::Output, Q::Output, R::Output>
-        // where
-        //     P: impls::IntoDim,
-        //     Q: impls::IntoDim,
-        //     R: impls::IntoDim,
-        // {
-        //     dims_t![first.into_dim(), second.into_dim(), third.into_dim()]
-        // }
 
         fn len(&self) -> usize
         where
@@ -183,10 +162,26 @@ mod dim {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dims;
+    use crate::{dims, Dims};
+    use typenum::consts::*;
 
     #[test]
     fn len_test() {
+        assert_eq!(<Dims![?]>::new(vec![3, 1, 4]), DynDimensions(vec![3, 1, 4]));
+        assert_eq!(
+            <Dims![?]>::new(&vec![3, 1, 4]),
+            DynDimensions(vec![3, 1, 4])
+        );
+        assert_eq!(<Dims![_]>::new(3), dims_t![DynDim::new(3)]);
+        assert_eq!(<Dims![3]>::new(U3::new()), dims![3]);
+        assert_eq!(
+            <Dims![_, 3]>::new((2, U3::new())),
+            dims_t![DynDim::new(2), U3::new()]
+        );
+        assert_eq!(
+            <Dims![4, _, 3]>::new((U4::new(), 2, U3::new())),
+            dims_t![U4::new(), DynDim::new(2), U3::new()]
+        );
         assert_eq!(dims![].len(), 0);
         assert_eq!(dims![3].len(), 1);
         assert_eq!(dims![1, 2, 3].len(), 3);

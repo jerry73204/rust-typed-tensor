@@ -37,6 +37,70 @@ where
     }
 }
 
+// new impl
+
+pub trait NewDimsImpl<Shape, Out> {
+    fn impl_new(shape: Shape) -> Out;
+}
+
+impl NewDimsImpl<Vec<usize>, DynDimensions> for () {
+    fn impl_new(shape: Vec<usize>) -> DynDimensions {
+        DynDimensions(shape)
+    }
+}
+
+impl NewDimsImpl<&Vec<usize>, DynDimensions> for () {
+    fn impl_new(shape: &Vec<usize>) -> DynDimensions {
+        DynDimensions(shape.to_owned())
+    }
+}
+
+impl NewDimsImpl<&[usize], DynDimensions> for () {
+    fn impl_new(shape: &[usize]) -> DynDimensions {
+        DynDimensions(shape.iter().cloned().collect())
+    }
+}
+
+impl<PFrom, PTo> NewDimsImpl<PFrom, DimsT![PTo]> for ()
+where
+    PFrom: IntoDim<Output = PTo>,
+{
+    fn impl_new(shape: PFrom) -> DimsT![PTo] {
+        dims_t![shape.into_dim()]
+    }
+}
+
+impl<PFrom, PTo> NewDimsImpl<(PFrom,), DimsT![PTo]> for ()
+where
+    PFrom: IntoDim<Output = PTo>,
+{
+    fn impl_new((shape,): (PFrom,)) -> DimsT![PTo] {
+        dims_t![shape.into_dim()]
+    }
+}
+
+impl<PFrom, PTo, QFrom, QTo> NewDimsImpl<(PFrom, QFrom), DimsT![PTo, QTo]> for ()
+where
+    PFrom: IntoDim<Output = PTo>,
+    QFrom: IntoDim<Output = QTo>,
+{
+    fn impl_new((d0, d1): (PFrom, QFrom)) -> DimsT![PTo, QTo] {
+        dims_t![d0.into_dim(), d1.into_dim()]
+    }
+}
+
+impl<PFrom, PTo, QFrom, QTo, RFrom, RTo> NewDimsImpl<(PFrom, QFrom, RFrom), DimsT![PTo, QTo, RTo]>
+    for ()
+where
+    PFrom: IntoDim<Output = PTo>,
+    QFrom: IntoDim<Output = QTo>,
+    RFrom: IntoDim<Output = RTo>,
+{
+    fn impl_new((d0, d1, d2): (PFrom, QFrom, RFrom)) -> DimsT![PTo, QTo, RTo] {
+        dims_t![d0.into_dim(), d1.into_dim(), d2.into_dim()]
+    }
+}
+
 // to_dyn
 
 pub trait ToDynImpl<Dims>
