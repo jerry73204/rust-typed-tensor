@@ -327,127 +327,66 @@ typ! {
             DynDimensions
         } else {
             let index: Unsigned = index;
-            MergeLeadingDims(Nil, inputs, index)
+
+            // "transpose" the list of lists
+            let zipped = list::ZipEx(inputs);
+
+            // extract sublists of interests
+            let leading_list: List = list::Index(zipped, RangeTo::<index>);
+            let trailing_list: List = {
+                let from: Unsigned = index + 1u;
+                list::Index(zipped, RangeFrom::<from>)
+            };
+            let selected_dims: DimsList = list::Index(zipped, index);
+
+            // merge dimensions
+            let leading_dims = ReduceMergeDims(leading_list);
+            let trailing_dims = ReduceMergeDims(trailing_list);
+            let sum_dim: Dim = list::ReduceSum(selected_dims);
+
+            // output
+            list::Extend(list::PushBack(leading_dims, sum_dim), trailing_dims)
         }
     }
 
-    fn MergeLeadingDims<saved, remaining, index>(saved: DimsList, remaining: List, index: Unsigned) -> DimsList {
-        if index == 0u {
-            let new_dim = SumDims(remaining);
-            let new_remaining = RemoveDims(Nil, remaining);
-            let new_saved = Cons::<new_dim, saved>;
-            MergeTrailingDims(new_saved, new_remaining)
+    fn ReduceMergeDims<inputs>(inputs: List) -> List {
+        match inputs {
+            #[generics(dims: DimsList, tail: List)]
+            Cons::<dims, tail> => {
+                let merged = MergeDims(dims);
+                let new_tail = ReduceMergeDims(tail);
+                Cons::<merged, new_tail>
+            }
+            Nil => Nil,
+        }
+    }
+
+    fn MergeDims<dims>(dims: DimsList) -> Dim {
+        let init: Dim = list::First(dims);
+        MergeDimsRecursive(init, dims)
+    }
+
+    fn MergeDimsRecursive<curr, dims>(curr: Dim, dims: DimsList) -> Dim {
+        match dims {
+            #[generics(head: Dim, tail: DimsList)]
+            Cons::<head, tail> => MergeDimsRecursive(MergeDim(curr, head), tail),
+            Nil => curr,
+        }
+    }
+
+    fn MergeDim<lhs, rhs>(lhs: Dim, rhs: Dim) -> Dim {
+        if IsDyn(lhs) {
+            if IsDyn(rhs) {
+                DynDim
+            } else {
+                rhs
+            }
+        } else if IsDyn(rhs) {
+            lhs
         } else {
-            let expect = ExtractFirstDim(DynDim, remaining);
-            let new_remaining = RemoveExpectedDims(Nil, remaining, expect);
-            let new_saved = Cons::<expect, saved>;
-            let new_index: Unsigned = index - 1u;
-            MergeLeadingDims(new_saved, new_remaining, new_index)
-        }
-    }
-
-    fn MergeTrailingDims<saved, remaining>(saved: DimsList, remaining: List) -> DimsList {
-        match remaining {
-            #[generics(dim: Dim, dims_tail: DimsList, tail: List)]
-            Cons::<Cons::<dim, dims_tail>, tail> => {
-                let expect = ExtractFirstDim(DynDim, remaining);
-                let new_remaining = RemoveExpectedDims(Nil, remaining, expect);
-                let new_saved = Cons::<expect, saved>;
-                MergeTrailingDims(new_saved, new_remaining)
+            match lhs == rhs {
+                B1 => lhs,
             }
-            #[generics(tail: List)]
-            Cons::<Nil, tail> => {
-                AssertAllEmpty(remaining);
-                list::Reverse(saved)
-            }
-        }
-    }
-
-    fn AssertAllEmpty<remaining>(remaining: List) {
-        match remaining {
-            #[generics(tail: List)]
-            Cons::<Nil, tail> => AssertAllEmpty(tail),
-            Nil => (),
-        }
-    }
-
-    fn CheckDynDimensions<remaining>(remaining: List) -> Bit {
-        match remaining {
-            #[generics(tail: List)]
-            Cons::<DynDimensions, tail> => true,
-            #[generics(dim: Dim, dims_tail: DimsList, tail: List)]
-            Cons::<Cons::<dim, dims_tail>, tail> => CheckDynDimensions(tail),
-            Nil => false,
-        }
-    }
-
-    fn ExtractFirstDim<expect, remaining>(expect: Dim, remaining: List) -> Dim {
-        match remaining {
-            #[generics(dim: Dim, dims_tail: DimsList, tail: List)]
-            Cons::<Cons<dim, dims_tail>, tail> => {
-                match (expect, dim) {
-                    #[capture(dim)]
-                    (DynDim, dim) => ExtractFirstDim(dim, tail),
-                    (UTerm, DynDim) => ExtractFirstDim(expect, tail),
-                    #[generics(uint: Unsigned, bit: Bit)]
-                    (UInt::<uint, bit>, DynDim) => ExtractFirstDim(expect, tail),
-                    (UTerm, UTerm) => ExtractFirstDim(expect, tail),
-                    #[generics(uint: Unsigned, bit: Bit)]
-                    (UInt::<uint, bit>, UInt::<uint, bit>) => ExtractFirstDim(expect, tail),
-                }
-            }
-            Nil => expect,
-        }
-    }
-
-    fn RemoveDims<saved, remaining>(saved: List, remaining: List) -> List {
-        match remaining {
-            #[generics(dim: Dim, dims_tail: DimsList, tail: List)]
-            Cons::<Cons::<dim, dims_tail>, tail> => RemoveDims(Cons::<dims_tail, saved>, tail),
-            Nil => list::Reverse(saved),
-        }
-    }
-
-    fn RemoveExpectedDims<saved, remaining, expect>(saved: List, remaining: List, expect: Dim) -> List {
-        match remaining {
-            #[generics(dim: Dim, dims_tail: DimsList, tail: List)]
-            Cons::<Cons::<dim, dims_tail>, tail> => {
-                match (expect, dim) {
-                    #[capture(dim)]
-                    (DynDim, DynDim) => RemoveExpectedDims(Cons::<dims_tail, saved>, tail, expect),
-                    (UTerm, DynDim) => RemoveExpectedDims(Cons::<dims_tail, saved>, tail, expect),
-                    #[generics(uint: Unsigned, bit: Bit)]
-                    (UInt::<uint, bit>, DynDim) => RemoveExpectedDims(Cons::<dims_tail, saved>, tail, expect),
-                    (UTerm, UTerm) => RemoveExpectedDims(Cons::<dims_tail, saved>, tail, expect),
-                    #[generics(uint: Unsigned, bit: Bit)]
-                    (UInt::<uint, bit>, UInt::<uint, bit>) => RemoveExpectedDims(Cons::<dims_tail, saved>, tail, expect),
-                }
-            }
-            Nil => list::Reverse(saved),
-        }
-    }
-
-    fn SumDims<remaining>(remaining: List) -> Dim {
-        match remaining {
-            #[generics(dim: Dim, dims_tail: DimsList, tail: List)]
-            Cons::<Cons::<dim, dims_tail>, tail> => {
-                let remaining_sum = SumDims(tail);
-                match (remaining_sum, dim) {
-                    #[capture(dim)]
-                    (DynDim, dim) => DynDim,
-                    (UTerm, DynDim) => DynDim,
-                    (UTerm, UTerm) => UTerm,
-                    #[generics(uint: Unsigned, bit: Bit)]
-                    (UTerm, UInt::<uint, bit>) => dim,
-                    #[generics(uint: Unsigned, bit: Bit)]
-                    (UInt::<uint, bit>, DynDim) => DynDim,
-                    #[generics(uint: Unsigned, bit: Bit)]
-                    (UInt::<uint, bit>, UTerm) => remaining_sum,
-                    #[generics(uint1: Unsigned, bit1: Bit, uint2: Unsigned, bit2: Bit)]
-                    (UInt::<uint1, bit1>, UInt::<uint2, bit2>) => dim + remaining_sum,
-                }
-            }
-            Nil => UTerm,
         }
     }
 }
