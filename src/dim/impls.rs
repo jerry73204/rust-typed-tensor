@@ -10,10 +10,10 @@ pub trait IntoDim {
 }
 
 impl IntoDim for usize {
-    type Output = Dyn;
+    type Output = DynDim;
 
     fn into_dim(self) -> Self::Output {
-        Dyn(self)
+        DynDim::new(self)
     }
 }
 
@@ -171,7 +171,7 @@ where
     }
 }
 
-impl<P, R, U, B> MatrixDotImpl<DimsT![P, Dyn], DimsT![UInt::<U, B>, R], DimsT![P, R]> for ()
+impl<P, R, U, B> MatrixDotImpl<DimsT![P, DynDim], DimsT![UInt::<U, B>, R], DimsT![P, R]> for ()
 where
     P: Dim + Clone,
     R: Dim + Clone,
@@ -180,7 +180,7 @@ where
 {
     type Output = Result<DimsT![P, R]>;
 
-    fn impl_matrix_dot(lhs: &DimsT![P, Dyn], rhs: &DimsT![UInt::<U, B>, R]) -> Self::Output {
+    fn impl_matrix_dot(lhs: &DimsT![P, DynDim], rhs: &DimsT![UInt::<U, B>, R]) -> Self::Output {
         ensure!(
             lhs.tail.head.0 == UInt::<U, B>::USIZE,
             "dimensions mismatch"
@@ -189,7 +189,7 @@ where
     }
 }
 
-impl<P, R, U, B> MatrixDotImpl<DimsT![P, UInt::<U, B>], DimsT![Dyn, R], DimsT![P, R]> for ()
+impl<P, R, U, B> MatrixDotImpl<DimsT![P, UInt::<U, B>], DimsT![DynDim, R], DimsT![P, R]> for ()
 where
     P: Dim + Clone,
     R: Dim + Clone,
@@ -198,7 +198,7 @@ where
 {
     type Output = Result<DimsT![P, R]>;
 
-    fn impl_matrix_dot(lhs: &DimsT![P, UInt::<U, B>], rhs: &DimsT![Dyn, R]) -> Self::Output {
+    fn impl_matrix_dot(lhs: &DimsT![P, UInt::<U, B>], rhs: &DimsT![DynDim, R]) -> Self::Output {
         ensure!(rhs.head.0 == UInt::<U, B>::USIZE, "dimensions mismatch");
         Ok(dims_t![lhs.head.clone(), rhs.tail.head.clone()])
     }

@@ -23,7 +23,7 @@ macro_rules! Dims {
         type_freak::list::Cons<tyuint!($dim), Dims![$($remaining),*]>
     };
     [_ $(, $remaining:tt)* $(,)?] => {
-        type_freak::list::Cons<$crate::dim::Dyn, Dims![$($remaining),*]>
+        type_freak::list::Cons<$crate::dim::DynDim, Dims![$($remaining),*]>
     };
 }
 

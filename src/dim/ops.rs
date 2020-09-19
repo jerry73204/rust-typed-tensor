@@ -1,4 +1,4 @@
-use super::{Dim, Dimensions, Dims2, DimsList, Dyn, DynDimensions, StaticDimsList};
+use super::{Dim, Dimensions, Dims2, DimsList, DynDim, DynDimensions, StaticDimsList};
 use crate::common::*;
 use typenum::U1;
 
@@ -71,19 +71,19 @@ typ! {
 
     pub fn MatrixDot<lhs, rhs>(lhs: Dimensions, rhs: Dimensions) -> Dimensions {
         match (lhs, rhs) {
-            (DynDimensions, DynDimensions) => Dims2::<Dyn, Dyn>,
+            (DynDimensions, DynDimensions) => Dims2::<DynDim, DynDim>,
             #[generics(q: Dim, r: Dim)]
-            (DynDimensions, Dims2::<q, r>) => Dims2::<Dyn, r>,
+            (DynDimensions, Dims2::<q, r>) => Dims2::<DynDim, r>,
             #[generics(p: Dim, q: Dim)]
-            (Dims2::<p, q>, DynDimensions) => Dims2::<p, Dyn>,
+            (Dims2::<p, q>, DynDimensions) => Dims2::<p, DynDim>,
             #[generics(p: Dim, r: Dim, uint: Unsigned, bit: Bit)]
             (Dims2::<p, UInt<uint, bit>>, Dims2::<UInt<uint, bit>, r>) => Dims2::<p, r>,
             #[generics(p: Dim, r: Dim, uint: Unsigned, bit: Bit)]
-            (Dims2::<p, Dyn>, Dims2::<UInt<uint, bit>, r>) => Dims2::<p, r>,
+            (Dims2::<p, DynDim>, Dims2::<UInt<uint, bit>, r>) => Dims2::<p, r>,
             #[generics(p: Dim, r: Dim, uint: Unsigned, bit: Bit)]
-            (Dims2::<p, UInt<uint, bit>>, Dims2::<Dyn, r>) => Dims2::<p, r>,
+            (Dims2::<p, UInt<uint, bit>>, Dims2::<DynDim, r>) => Dims2::<p, r>,
             #[generics(p: Dim, r: Dim)]
-            (Dims2::<p, Dyn>, Dims2::<Dyn, r>) => Dims2::<p, r>,
+            (Dims2::<p, DynDim>, Dims2::<DynDim, r>) => Dims2::<p, r>,
         }
     }
 
@@ -151,7 +151,7 @@ typ! {
 
     pub fn IsDyn<dim>(dim: Dim) -> Bit {
         match dim {
-            Dyn => true,
+            DynDim => true,
             UTerm => false,
             #[generics(uint: Unsigned, bit: Bit)]
             UInt::<uint, bit> => false,
@@ -192,7 +192,7 @@ typ! {
             (Cons::<ldim, ltail>, Cons::<rdim, rtail>) => {
                 let new_dim = if IsDyn(ldim) {
                     if IsDyn(rdim) {
-                        Dyn
+                        DynDim
                     } else {
                         rdim
                     }
@@ -242,17 +242,17 @@ typ! {
             (Cons::<dim, tail>, Nil) => lhs,
             #[generics(ldim: Dim, ltail: DimsList, rdim: Dim, rtail: DimsList)]
             (Cons::<ldim, ltail>, Cons::<rdim, rtail>) => {
-                let dim: Dim = match (ldim, rdim) {
-                    #[capture(rdim)]
-                    (Dyn, rdim) => Dyn,
-                    #[generics(uint: Unsigned, bit: Bit)]
-                    (UInt::<uint, bit>, Dyn) => Dyn,
-                    #[generics(uint: Unsigned, bit: Bit)]
-                    (U1, UInt::<uint, bit>) => rdim,
-                    #[generics(uint: Unsigned, bit1: Unsigned, bit2: Bit)]
-                    (UInt::<UInt<uint, bit1>, bit2>, U1) => ldim,
-                    #[generics(uint: Unsigned, bit1: Unsigned, bit2: Bit)]
-                    (UInt::<UInt<uint, bit1>, bit2>, UInt::<UInt<uint, bit1>, bit2>) => ldim,
+                let dim: Dim = if IsDyn(ldim) || IsDyn(rdim) {
+                    DynDim
+                } else {
+                    match (ldim, rdim) {
+                        #[generics(uint: Unsigned, bit: Bit)]
+                        (U1, UInt::<uint, bit>) => rdim,
+                        #[generics(uint: Unsigned, bit1: Unsigned, bit2: Bit)]
+                        (UInt::<UInt<uint, bit1>, bit2>, U1) => ldim,
+                        #[generics(uint: Unsigned, bit1: Unsigned, bit2: Bit)]
+                        (UInt::<UInt<uint, bit1>, bit2>, UInt::<UInt<uint, bit1>, bit2>) => ldim,
+                    }
                 };
                 let tail: DimsList = PyTorchBroadcastRecursive(ltail, rtail);
                 Cons::<dim, tail>
@@ -288,7 +288,7 @@ typ! {
 
     fn DimIntegerDiv<lhs, rhs>(lhs: Dim, rhs: Dim) -> Dim {
         if IsDyn(lhs) || IsDyn(rhs) {
-            Dyn
+            DynDim
         } else {
             let lhs: Unsigned = lhs;
             let rhs: Unsigned = rhs;
@@ -338,7 +338,7 @@ typ! {
             let new_saved = Cons::<new_dim, saved>;
             MergeTrailingDims(new_saved, new_remaining)
         } else {
-            let expect = ExtractFirstDim(Dyn, remaining);
+            let expect = ExtractFirstDim(DynDim, remaining);
             let new_remaining = RemoveExpectedDims(Nil, remaining, expect);
             let new_saved = Cons::<expect, saved>;
             let new_index: Unsigned = index - 1u;
@@ -350,7 +350,7 @@ typ! {
         match remaining {
             #[generics(dim: Dim, dims_tail: DimsList, tail: List)]
             Cons::<Cons::<dim, dims_tail>, tail> => {
-                let expect = ExtractFirstDim(Dyn, remaining);
+                let expect = ExtractFirstDim(DynDim, remaining);
                 let new_remaining = RemoveExpectedDims(Nil, remaining, expect);
                 let new_saved = Cons::<expect, saved>;
                 MergeTrailingDims(new_saved, new_remaining)
@@ -387,10 +387,10 @@ typ! {
             Cons::<Cons<dim, dims_tail>, tail> => {
                 match (expect, dim) {
                     #[capture(dim)]
-                    (Dyn, dim) => ExtractFirstDim(dim, tail),
-                    (UTerm, Dyn) => ExtractFirstDim(expect, tail),
+                    (DynDim, dim) => ExtractFirstDim(dim, tail),
+                    (UTerm, DynDim) => ExtractFirstDim(expect, tail),
                     #[generics(uint: Unsigned, bit: Bit)]
-                    (UInt::<uint, bit>, Dyn) => ExtractFirstDim(expect, tail),
+                    (UInt::<uint, bit>, DynDim) => ExtractFirstDim(expect, tail),
                     (UTerm, UTerm) => ExtractFirstDim(expect, tail),
                     #[generics(uint: Unsigned, bit: Bit)]
                     (UInt::<uint, bit>, UInt::<uint, bit>) => ExtractFirstDim(expect, tail),
@@ -414,10 +414,10 @@ typ! {
             Cons::<Cons::<dim, dims_tail>, tail> => {
                 match (expect, dim) {
                     #[capture(dim)]
-                    (Dyn, Dyn) => RemoveExpectedDims(Cons::<dims_tail, saved>, tail, expect),
-                    (UTerm, Dyn) => RemoveExpectedDims(Cons::<dims_tail, saved>, tail, expect),
+                    (DynDim, DynDim) => RemoveExpectedDims(Cons::<dims_tail, saved>, tail, expect),
+                    (UTerm, DynDim) => RemoveExpectedDims(Cons::<dims_tail, saved>, tail, expect),
                     #[generics(uint: Unsigned, bit: Bit)]
-                    (UInt::<uint, bit>, Dyn) => RemoveExpectedDims(Cons::<dims_tail, saved>, tail, expect),
+                    (UInt::<uint, bit>, DynDim) => RemoveExpectedDims(Cons::<dims_tail, saved>, tail, expect),
                     (UTerm, UTerm) => RemoveExpectedDims(Cons::<dims_tail, saved>, tail, expect),
                     #[generics(uint: Unsigned, bit: Bit)]
                     (UInt::<uint, bit>, UInt::<uint, bit>) => RemoveExpectedDims(Cons::<dims_tail, saved>, tail, expect),
@@ -434,13 +434,13 @@ typ! {
                 let remaining_sum = SumDims(tail);
                 match (remaining_sum, dim) {
                     #[capture(dim)]
-                    (Dyn, dim) => Dyn,
-                    (UTerm, Dyn) => Dyn,
+                    (DynDim, dim) => DynDim,
+                    (UTerm, DynDim) => DynDim,
                     (UTerm, UTerm) => UTerm,
                     #[generics(uint: Unsigned, bit: Bit)]
                     (UTerm, UInt::<uint, bit>) => dim,
                     #[generics(uint: Unsigned, bit: Bit)]
-                    (UInt::<uint, bit>, Dyn) => Dyn,
+                    (UInt::<uint, bit>, DynDim) => DynDim,
                     #[generics(uint: Unsigned, bit: Bit)]
                     (UInt::<uint, bit>, UTerm) => remaining_sum,
                     #[generics(uint1: Unsigned, bit1: Bit, uint2: Unsigned, bit2: Bit)]
@@ -500,7 +500,7 @@ typ! {
                 #[generics(tail: DimsList)]
                 Cons::<U1, tail> => list::Extend(list::Reverse(saved), tail),
                 #[generics(tail: DimsList)]
-                Cons::<Dyn, tail> => list::Extend(list::Reverse(saved), tail),
+                Cons::<DynDim, tail> => list::Extend(list::Reverse(saved), tail),
             }
         } else {
             match remaining {
@@ -544,7 +544,7 @@ mod tests {
         let _: SameOp<FlattenOp<Dims![1, 2, 3], U1, U1>, Dims![1, 2, 3]> = ();
         let _: SameOp<FlattenOp<Dims![1, _, 3], U0, U1>, Dims![_, 3]> = ();
         let _: SameOp<CatOp<List![Dims![1, 2, 3], Dims![?]], tyuint!(1)>, Dims![?]> = ();
-        let _: SameOp<CatOp<List![Dims![1, 2, 3], Dims![1, 5, 3]], Dyn>, Dims![?]> = ();
+        let _: SameOp<CatOp<List![Dims![1, 2, 3], Dims![1, 5, 3]], DynDim>, Dims![?]> = ();
         let _: SameOp<CatOp<List![Dims![2], Dims![3]], tyuint!(0)>, Dims![5]> = ();
         let _: SameOp<CatOp<List![Dims![2], Dims![_]], tyuint!(0)>, Dims![_]> = ();
         let _: SameOp<CatOp<List![Dims![_], Dims![_]], tyuint!(0)>, Dims![_]> = ();
@@ -563,14 +563,14 @@ mod tests {
             Dims![2, 7, 13, 3],
         > = ();
         let _: SameOp<IndexSelectOp<Dims![?], U0, U2>, Dims![?]> = ();
-        let _: SameOp<IndexSelectOp<Dims![2, 3, 4], Dyn, U2>, Dims![?]> = ();
+        let _: SameOp<IndexSelectOp<Dims![2, 3, 4], DynDim, U2>, Dims![?]> = ();
         let _: SameOp<IndexSelectOp<Dims![3], U0, U2>, Dims![]> = ();
         let _: SameOp<IndexSelectOp<Dims![2, 3, 4], U1, U2>, Dims![2, 4]> = ();
         let _: SameOp<IndexSelectOp<Dims![2, _, 4], U1, U2>, Dims![2, 4]> = ();
-        let _: SameOp<IndexSelectOp<Dims![2, 3, 4], U1, Dyn>, Dims![2, 4]> = ();
-        let _: SameOp<IndexSelectOp<Dims![2, _, 4], U1, Dyn>, Dims![2, 4]> = ();
+        let _: SameOp<IndexSelectOp<Dims![2, 3, 4], U1, DynDim>, Dims![2, 4]> = ();
+        let _: SameOp<IndexSelectOp<Dims![2, _, 4], U1, DynDim>, Dims![2, 4]> = ();
         let _: SameOp<UnSqueezeOp<Dims![?], U1>, Dims![?]> = ();
-        let _: SameOp<UnSqueezeOp<Dims![3, 7, 4], Dyn>, Dims![?]> = ();
+        let _: SameOp<UnSqueezeOp<Dims![3, 7, 4], DynDim>, Dims![?]> = ();
         let _: SameOp<UnSqueezeOp<Dims![3, 7, 4], U0>, Dims![1, 3, 7, 4]> = ();
         let _: SameOp<UnSqueezeOp<Dims![3, 7, 4], U2>, Dims![3, 7, 1, 4]> = ();
         let _: SameOp<UnSqueezeOp<Dims![3, 7, 4], U3>, Dims![3, 7, 4, 1]> = ();
@@ -578,7 +578,7 @@ mod tests {
         let _: SameOp<SqueezeAllOp<Dims![2, _, 3]>, Dims![?]> = ();
         let _: SameOp<SqueezeAllOp<Dims![1, 2, 1, 3, 1, 4, 1]>, Dims![2, 3, 4]> = ();
         let _: SameOp<SqueezeOp<Dims![?], U1>, Dims![?]> = ();
-        let _: SameOp<SqueezeOp<Dims![2, 1, 3], Dyn>, Dims![?]> = ();
+        let _: SameOp<SqueezeOp<Dims![2, 1, 3], DynDim>, Dims![?]> = ();
         let _: SameOp<SqueezeOp<Dims![2, 1, 3], U1>, Dims![2, 3]> = ();
         let _: SameOp<SqueezeOp<Dims![2, _, 3], U1>, Dims![2, 3]> = ();
     }

@@ -1,8 +1,6 @@
 use super::{impls, ops};
 use crate::{common::*, dims_t, DimsT};
 
-pub use dyn_dim::*;
-
 /// Marks the list of dimensions.
 pub trait Dimensions
 where
@@ -111,7 +109,7 @@ pub trait Dim {
     fn to_usize(&self) -> usize;
 }
 
-impl Dim for Dyn {
+impl Dim for DynDim {
     fn to_usize(&self) -> usize {
         self.0
     }
@@ -131,6 +129,8 @@ where
     }
 }
 
+pub type DynDim = Dyn<usize>;
+
 /// The dimensions with runtime length.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DynDimensions(pub Vec<usize>);
@@ -141,205 +141,7 @@ pub type Dims1<P> = DimsT![P];
 pub type Dims2<P, Q> = DimsT![P, Q];
 pub type Dims3<P, Q, R> = DimsT![P, Q, R];
 
-mod dyn_dim {
-    use super::*;
-
-    /// Single dynamic dimension.
-    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    pub struct Dyn(pub usize);
-
-    // add
-
-    impl Add<Dyn> for Dyn {
-        type Output = Dyn;
-
-        fn add(self, rhs: Dyn) -> Self::Output {
-            Dyn(self.0 + rhs.0)
-        }
-    }
-
-    impl<U, B> Add<Dyn> for UInt<U, B>
-    where
-        U: Unsigned,
-        B: Bit,
-    {
-        type Output = Dyn;
-
-        fn add(self, rhs: Dyn) -> Self::Output {
-            Dyn(Self::USIZE + rhs.0)
-        }
-    }
-
-    impl<U, B> Add<UInt<U, B>> for Dyn
-    where
-        U: Unsigned,
-        B: Bit,
-    {
-        type Output = Dyn;
-
-        fn add(self, _rhs: UInt<U, B>) -> Self::Output {
-            Dyn(self.0 + UInt::<U, B>::USIZE)
-        }
-    }
-
-    impl Add<Dyn> for UTerm {
-        type Output = Dyn;
-
-        fn add(self, rhs: Dyn) -> Self::Output {
-            rhs
-        }
-    }
-
-    impl Add<UTerm> for Dyn {
-        type Output = Dyn;
-
-        fn add(self, _rhs: UTerm) -> Self::Output {
-            self
-        }
-    }
-
-    // sub
-
-    impl Sub<Dyn> for Dyn {
-        type Output = Dyn;
-
-        fn sub(self, rhs: Dyn) -> Self::Output {
-            Dyn(self.0 - rhs.0)
-        }
-    }
-
-    impl<U, B> Sub<Dyn> for UInt<U, B>
-    where
-        U: Unsigned,
-        B: Bit,
-    {
-        type Output = Dyn;
-
-        fn sub(self, rhs: Dyn) -> Self::Output {
-            Dyn(Self::USIZE - rhs.0)
-        }
-    }
-
-    impl<U, B> Sub<UInt<U, B>> for Dyn
-    where
-        U: Unsigned,
-        B: Bit,
-    {
-        type Output = Dyn;
-
-        fn sub(self, _rhs: UInt<U, B>) -> Self::Output {
-            Dyn(self.0 - UInt::<U, B>::USIZE)
-        }
-    }
-
-    impl Sub<Dyn> for UTerm {
-        type Output = Dyn;
-
-        fn sub(self, rhs: Dyn) -> Self::Output {
-            Dyn(0 - rhs.0)
-        }
-    }
-
-    impl Sub<UTerm> for Dyn {
-        type Output = Dyn;
-
-        fn sub(self, _rhs: UTerm) -> Self::Output {
-            self
-        }
-    }
-
-    // mul
-
-    impl Mul<Dyn> for Dyn {
-        type Output = Dyn;
-
-        fn mul(self, rhs: Dyn) -> Self::Output {
-            Dyn(self.0 * rhs.0)
-        }
-    }
-
-    impl<U, B> Mul<Dyn> for UInt<U, B>
-    where
-        U: Unsigned,
-        B: Bit,
-    {
-        type Output = Dyn;
-
-        fn mul(self, rhs: Dyn) -> Self::Output {
-            Dyn(Self::USIZE * rhs.0)
-        }
-    }
-
-    impl<U, B> Mul<UInt<U, B>> for Dyn
-    where
-        U: Unsigned,
-        B: Bit,
-    {
-        type Output = Dyn;
-
-        fn mul(self, _rhs: UInt<U, B>) -> Self::Output {
-            Dyn(self.0 * UInt::<U, B>::USIZE)
-        }
-    }
-
-    impl Mul<Dyn> for UTerm {
-        type Output = UTerm;
-
-        fn mul(self, _rhs: Dyn) -> Self::Output {
-            UTerm
-        }
-    }
-
-    impl Mul<UTerm> for Dyn {
-        type Output = UTerm;
-
-        fn mul(self, rhs: UTerm) -> Self::Output {
-            rhs
-        }
-    }
-
-    // div
-
-    impl Div<Dyn> for Dyn {
-        type Output = Dyn;
-
-        fn div(self, rhs: Dyn) -> Self::Output {
-            Dyn(self.0 / rhs.0)
-        }
-    }
-
-    impl<U, B> Div<Dyn> for UInt<U, B>
-    where
-        U: Unsigned,
-        B: Bit,
-    {
-        type Output = Dyn;
-
-        fn div(self, rhs: Dyn) -> Self::Output {
-            Dyn(Self::USIZE - rhs.0)
-        }
-    }
-
-    impl<U, B> Div<UInt<U, B>> for Dyn
-    where
-        U: Unsigned,
-        B: Bit,
-    {
-        type Output = Dyn;
-
-        fn div(self, _rhs: UInt<U, B>) -> Self::Output {
-            Dyn(self.0 / UInt::<U, B>::USIZE)
-        }
-    }
-
-    impl Div<Dyn> for UTerm {
-        type Output = Dyn;
-
-        fn div(self, rhs: Dyn) -> Self::Output {
-            Dyn(0 / rhs.0)
-        }
-    }
-}
+// dynamic dim
 
 #[cfg(test)]
 mod tests {
