@@ -37,6 +37,52 @@ where
     }
 }
 
+// to_dyn
+
+pub trait ToDynImpl<Dims>
+where
+    Dims: Dimensions,
+{
+    fn impl_to_dyn(dims: &Dims) -> DynDimensions;
+    fn impl_to_dyn_recursive(dims: &Dims, values: &mut Vec<usize>);
+}
+
+impl ToDynImpl<DynDimensions> for () {
+    fn impl_to_dyn(dims: &DynDimensions) -> DynDimensions {
+        dims.clone()
+    }
+
+    fn impl_to_dyn_recursive(dims: &DynDimensions, values: &mut Vec<usize>) {
+        unreachable!("please report bug");
+    }
+}
+
+impl<Head, Tail> ToDynImpl<Cons<Head, Tail>> for ()
+where
+    Head: Dim,
+    Tail: DimsList,
+    (): ToDynImpl<Tail>,
+{
+    fn impl_to_dyn(dims: &Cons<Head, Tail>) -> DynDimensions {
+        let mut values = vec![];
+        <() as ToDynImpl<Cons<Head, Tail>>>::impl_to_dyn_recursive(dims, &mut values);
+        DynDimensions(values)
+    }
+
+    fn impl_to_dyn_recursive(dims: &Cons<Head, Tail>, values: &mut Vec<usize>) {
+        values.push(dims.head.to_dyn().0);
+        <() as ToDynImpl<Tail>>::impl_to_dyn_recursive(&dims.tail, values);
+    }
+}
+
+impl ToDynImpl<Nil> for () {
+    fn impl_to_dyn(dims: &Nil) -> DynDimensions {
+        DynDimensions(vec![])
+    }
+
+    fn impl_to_dyn_recursive(_dims: &Nil, _values: &mut Vec<usize>) {}
+}
+
 // len
 
 pub trait LenImpl<Dims>

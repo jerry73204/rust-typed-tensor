@@ -6,6 +6,13 @@ pub trait Dimensions
 where
     Self: Sized,
 {
+    fn to_dyn(&self) -> DynDimensions
+    where
+        (): impls::ToDynImpl<Self>,
+    {
+        <() as impls::ToDynImpl<Self>>::impl_to_dyn(self)
+    }
+
     fn new_dyn_dims(dims: Vec<usize>) -> DynDimensions {
         DynDimensions(dims)
     }
@@ -107,16 +114,25 @@ impl StaticDimsList for Nil {}
 /// Marks a single dimension.
 pub trait Dim {
     fn to_usize(&self) -> usize;
+    fn to_dyn(&self) -> DynDim;
 }
 
 impl Dim for DynDim {
     fn to_usize(&self) -> usize {
         self.0
     }
+
+    fn to_dyn(&self) -> DynDim {
+        self.clone()
+    }
 }
 impl Dim for UTerm {
     fn to_usize(&self) -> usize {
         Self::USIZE
+    }
+
+    fn to_dyn(&self) -> DynDim {
+        DynDim::new(Self::USIZE)
     }
 }
 impl<U, B> Dim for UInt<U, B>
@@ -126,6 +142,10 @@ where
 {
     fn to_usize(&self) -> usize {
         Self::USIZE
+    }
+
+    fn to_dyn(&self) -> DynDim {
+        DynDim::new(Self::USIZE)
     }
 }
 
