@@ -340,8 +340,8 @@ typ! {
             let selected_dims: DimsList = list::Index(zipped, index);
 
             // merge dimensions
-            let leading_dims = ReduceMergeDims(leading_list);
-            let trailing_dims = ReduceMergeDims(trailing_list);
+            let leading_dims = MapMergeDims(leading_list);
+            let trailing_dims = MapMergeDims(trailing_list);
             let sum_dim: Dim = list::ReduceSum(selected_dims);
 
             // output
@@ -349,12 +349,12 @@ typ! {
         }
     }
 
-    fn ReduceMergeDims<inputs>(inputs: List) -> List {
+    fn MapMergeDims<inputs>(inputs: List) -> List {
         match inputs {
             #[generics(dims: DimsList, tail: List)]
             Cons::<dims, tail> => {
                 let merged = MergeDims(dims);
-                let new_tail = ReduceMergeDims(tail);
+                let new_tail = MapMergeDims(tail);
                 Cons::<merged, new_tail>
             }
             Nil => Nil,
