@@ -392,6 +392,25 @@ typ! {
 }
 
 typ! {
+    pub fn CatAnyDyn<inputs>(inputs: List) -> List {
+        let zipped = list::ZipEx(inputs);
+        MapAnyDyn(zipped)
+    }
+
+    fn MapAnyDyn<inputs>(inputs: List) -> List {
+        match inputs {
+            #[generics(dims: DimsList, tail: List)]
+            Cons::<dims, tail> => {
+                let mapped = AnyDyn(dims);
+                let new_tail = MapAnyDyn(tail);
+                Cons::<mapped, new_tail>
+            }
+            Nil => Nil,
+        }
+    }
+}
+
+typ! {
     pub fn SqueezeAll<input>(input: Dimensions) -> Dimensions {
         if IsDynDimensions(input) {
             DynDimensions
@@ -529,6 +548,10 @@ mod tests {
         let _: SameOp<FlattenOp<Dims![1, 2, 3], U0, U1>, Dims![2, 3]> = ();
         let _: SameOp<FlattenOp<Dims![1, 2, 3], U1, U1>, Dims![1, 2, 3]> = ();
         let _: SameOp<FlattenOp<Dims![1, _, 3], U0, U1>, Dims![_, 3]> = ();
+        let _: SameOp<
+            CatAnyDynOp<List![Dims![1, 2, _, _], Dims![1, _, 3, _]]>,
+            List![B0, B1, B1, B1],
+        > = ();
         let _: SameOp<CatOp<List![Dims![1, 2, 3], Dims![?]], tyuint!(1)>, Dims![?]> = ();
         let _: SameOp<CatOp<List![Dims![1, 2, 3], Dims![1, 5, 3]], DynDim>, Dims![?]> = ();
         let _: SameOp<CatOp<List![Dims![2], Dims![3]], tyuint!(0)>, Dims![5]> = ();
