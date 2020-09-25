@@ -41,7 +41,6 @@ mod into_dim {
             Self::new()
         }
     }
-
 }
 
 // new impl
@@ -110,7 +109,6 @@ mod new {
             dims_t![d0.into_dim(), d1.into_dim(), d2.into_dim()]
         }
     }
-
 }
 
 // to_dyn
@@ -199,7 +197,6 @@ mod len {
             0
         }
     }
-
 }
 
 // to vec

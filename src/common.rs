@@ -1,7 +1,7 @@
 pub use anyhow::{ensure, Result};
 pub use std::{
     marker::PhantomData,
-    ops::{Add, Div, Mul, RangeFrom, RangeInclusive, RangeTo, Sub},
+    ops::{Add, BitAnd, BitOr, Div, Mul, Not, RangeFrom, RangeInclusive, RangeTo, Sub},
 };
 pub use typ::{typ, tyuint};
 pub use type_freak::{
