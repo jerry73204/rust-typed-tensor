@@ -163,11 +163,14 @@ mod dim {
 
     /// Marks a single dimension.
     pub trait Dim {
+        const VALUE: Option<usize>;
         fn to_usize(&self) -> usize;
         fn to_dyn(&self) -> DynDim;
     }
 
     impl Dim for DynDim {
+        const VALUE: Option<usize> = None;
+
         fn to_usize(&self) -> usize {
             self.0
         }
@@ -176,7 +179,10 @@ mod dim {
             self.clone()
         }
     }
+
     impl Dim for UTerm {
+        const VALUE: Option<usize> = Some(UTerm::USIZE);
+
         fn to_usize(&self) -> usize {
             Self::USIZE
         }
@@ -185,11 +191,14 @@ mod dim {
             DynDim::new(Self::USIZE)
         }
     }
+
     impl<U, B> Dim for UInt<U, B>
     where
         U: Unsigned,
         B: Bit,
     {
+        const VALUE: Option<usize> = Some(UInt::<U, B>::USIZE);
+
         fn to_usize(&self) -> usize {
             Self::USIZE
         }
