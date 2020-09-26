@@ -11,4 +11,4 @@ pub use type_freak::{
     numeric::UnsignedIntegerDiv,
     List,
 };
-pub use typenum::{Bit, UInt, UTerm, Unsigned, B0, B1};
+pub use typenum::{Bit, NInt, NonZero, PInt, UInt, UTerm, Unsigned, B0, B1, Z0};

@@ -19,6 +19,8 @@ mod dimensions {
     pub type Dims2<P, Q> = DimsT![P, Q];
     pub type Dims3<P, Q, R> = DimsT![P, Q, R];
 
+    // dimension trait
+
     /// Marks the list of dimensions.
     pub trait Dimensions
     where
@@ -73,6 +75,8 @@ mod dimensions {
 
     impl Dimensions for Nil {}
 
+    // DimsList trait
+
     pub trait DimsList
     where
         Self: List + Dimensions,
@@ -88,6 +92,8 @@ mod dimensions {
 
     impl DimsList for Nil {}
 
+    // StaticDimsList trait
+
     pub trait StaticDimsList
     where
         Self: DimsList,
@@ -101,6 +107,49 @@ mod dimensions {
     }
 
     impl StaticDimsList for Nil {}
+
+    // CheckedDimensions trait
+
+    pub trait CheckedDimensions {}
+
+    impl CheckedDimensions for DynDimensions {}
+
+    impl<Head, Tail> CheckedDimensions for Cons<Head, Tail>
+    where
+        Head: CheckedDim,
+        Tail: CheckedDimsList,
+    {
+    }
+
+    impl CheckedDimensions for Nil {}
+
+    impl CheckedDimensions for Option<DynDimensions> {}
+
+    impl<Head, Tail> CheckedDimensions for Option<Cons<Head, Tail>>
+    where
+        Head: CheckedDim,
+        Tail: CheckedDimsList,
+    {
+    }
+
+    impl CheckedDimensions for Option<Nil> {}
+
+    // CheckedDimsList trait
+
+    pub trait CheckedDimsList
+    where
+        Self: List,
+    {
+    }
+
+    impl<Head, Tail> CheckedDimsList for Cons<Head, Tail>
+    where
+        Head: CheckedDim,
+        Tail: CheckedDimsList,
+    {
+    }
+
+    impl CheckedDimsList for Nil {}
 }
 
 mod dim {
@@ -110,7 +159,7 @@ mod dim {
 
     pub type DynDim = Dyn<usize>;
 
-    // trait
+    // Dim trait
 
     /// Marks a single dimension.
     pub trait Dim {
@@ -149,6 +198,23 @@ mod dim {
             DynDim::new(Self::USIZE)
         }
     }
+
+    // CheckedDim trait
+
+    pub trait CheckedDim {}
+
+    impl CheckedDim for DynDim {}
+
+    impl CheckedDim for UTerm {}
+
+    impl<U, B> CheckedDim for UInt<U, B>
+    where
+        U: Unsigned,
+        B: Bit,
+    {
+    }
+
+    impl<D> CheckedDim for Option<D> where D: Dim {}
 }
 
 // dynamic dim
