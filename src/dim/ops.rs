@@ -1,4 +1,6 @@
-use super::{Dim, Dimensions, Dims2, DimsList, DynDim, DynDimensions, StaticDimsList};
+use super::{
+    CheckedDimensions, Dim, Dimensions, Dims2, DimsList, DynDim, DynDimensions, StaticDimsList,
+};
 use crate::common::*;
 use typenum::U1;
 
@@ -84,6 +86,24 @@ typ! {
             (Dims2::<p, UInt<uint, bit>>, Dims2::<DynDim, r>) => Dims2::<p, r>,
             #[generics(p: Dim, r: Dim)]
             (Dims2::<p, DynDim>, Dims2::<DynDim, r>) => Dims2::<p, r>,
+        }
+    }
+
+    pub fn CheckedMatrixDot<lhs, rhs>(lhs: Dimensions, rhs: Dimensions) -> CheckedDimensions {
+        match (lhs, rhs) {
+            (DynDimensions, DynDimensions) => Option::<Dims2::<DynDim, DynDim>>,
+            #[generics(q: Dim, r: Dim)]
+            (DynDimensions, Dims2::<q, r>) => Option::<Dims2::<DynDim, r>>,
+            #[generics(p: Dim, q: Dim)]
+            (Dims2::<p, q>, DynDimensions) => Option::<Dims2::<p, DynDim>>,
+            #[generics(p: Dim, r: Dim, uint: Unsigned, bit: Bit)]
+            (Dims2::<p, UInt<uint, bit>>, Dims2::<UInt<uint, bit>, r>) => Dims2::<p, r>,
+            #[generics(p: Dim, r: Dim, uint: Unsigned, bit: Bit)]
+            (Dims2::<p, DynDim>, Dims2::<UInt<uint, bit>, r>) => Option::<Dims2::<p, r>>,
+            #[generics(p: Dim, r: Dim, uint: Unsigned, bit: Bit)]
+            (Dims2::<p, UInt<uint, bit>>, Dims2::<DynDim, r>) => Option::<Dims2::<p, r>>,
+            #[generics(p: Dim, r: Dim)]
+            (Dims2::<p, DynDim>, Dims2::<DynDim, r>) => Option::<Dims2::<p, r>>,
         }
     }
 
