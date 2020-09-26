@@ -8,6 +8,7 @@ pub use type_freak::{
     control::{Same, SameOp},
     dyn_::Dyn,
     list::{self, Cons, List, Nil},
+    maybe::{Just, Maybe, Nothing},
     numeric::UnsignedIntegerDiv,
     List,
 };

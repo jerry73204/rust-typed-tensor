@@ -349,25 +349,37 @@ typ! {
             let index: Unsigned = index;
 
             // "transpose" the list of lists
-            let zipped = list::ZipEx(inputs);
+            let zipped: List = list::ZipEx(inputs);
 
-            // extract sublists of interests
-            let leading_list: List = list::Index(zipped, RangeTo::<index>);
-            let trailing_list: List = {
-                let from: Unsigned = index + 1u;
-                list::Index(zipped, RangeFrom::<from>)
-            };
-            let selected_dims: DimsList = list::Index(zipped, index);
-
-            // merge dimensions
-            let leading_dims = MapMergeDims(leading_list);
-            let trailing_dims = MapMergeDims(trailing_list);
-            let sum_dim: Dim = list::ReduceSum(selected_dims);
-
-            // output
-            list::Extend(list::PushBack(leading_dims, sum_dim), trailing_dims)
+            MergeLeadingDims(zipped, index)
         }
     }
+
+    fn MergeLeadingDims<dims: DimsList, tail: List, index>(Cons::<dims, tail>: List, index: Unsigned) -> DimsList {
+        if index == 0u {
+            let sum_dim = list::ReduceSum(dims);
+            let new_tail = MergeTrailingDims(tail);
+            Cons::<sum_dim, new_tail>
+        } else {
+            let merged = MergeDims(dims);
+            let new_index: Unsigned = index - 1u;
+            let new_tail = MergeLeadingDims(tail, new_index);
+            Cons::<merged, new_tail>
+        }
+    }
+
+    fn MergeTrailingDims<inputs>(inputs: List) -> DimsList {
+        match inputs {
+            #[generics(dims: DimsList, tail: List)]
+            Cons::<dims, tail> => {
+                let merged = MergeDims(dims);
+                let new_tail = MergeTrailingDims(tail);
+                Cons::<merged, new_tail>
+            }
+            Nil => Nil,
+        }
+    }
+
 
     fn MapMergeDims<inputs>(inputs: List) -> List {
         match inputs {
@@ -412,18 +424,33 @@ typ! {
 }
 
 typ! {
-    pub fn CatAnyDyn<inputs>(inputs: List) -> List {
+    pub fn CatUtil<inputs, index>(inputs: List, index: Unsigned) -> List {
         let zipped = list::ZipEx(inputs);
-        MapAnyDyn(zipped)
+        MapCatUtil(zipped, Just::<index>)
     }
 
-    fn MapAnyDyn<inputs>(inputs: List) -> List {
+    fn MapCatUtil<inputs, index>(inputs: List, index: Maybe) -> List {
         match inputs {
             #[generics(dims: DimsList, tail: List)]
             Cons::<dims, tail> => {
-                let mapped = AnyDyn(dims);
-                let new_tail = MapAnyDyn(tail);
-                Cons::<mapped, new_tail>
+                let has_dyn: Bit = AnyDyn(dims);
+                let is_selected: Bit = match index {
+                    #[generics(uint: Unsigned, bit: Bit)]
+                    Just::<UInt<uint, bit>> => false,
+                    Just::<UTerm> => true,
+                    Nothing => false,
+                };
+                let new_index: Maybe = match index {
+                    #[generics(uint: Unsigned, bit: Bit)]
+                    Just::<UInt<uint, bit>> => {
+                        let new_index: Unsigned = UInt::<uint, bit> - 1u;
+                        Just::<new_index>
+                    }
+                    Just::<UTerm> => Nothing,
+                    Nothing => Nothing,
+                };
+                let new_tail = MapCatUtil(tail, new_index);
+                Cons::<(has_dyn, is_selected), new_tail>
             }
             Nil => Nil,
         }
@@ -494,7 +521,9 @@ typ! {
 }
 
 typ! {
-    pub fn AllDyn<dims>(dims: DimsList) -> Bit {
+    // Bug: if adding `-> Bit` output bound, rustc runs into infinite recursion
+
+    pub fn AllDyn<dims>(dims: DimsList) {
         match dims {
             #[generics(tail: DimsList)]
             Cons::<DynDim, tail> => AllDyn(tail),
@@ -506,7 +535,7 @@ typ! {
         }
     }
 
-    pub fn AnyDyn<dims>(dims: DimsList) -> Bit {
+    pub fn AnyDyn<dims>(dims: DimsList) {
         match dims {
             #[generics(tail: DimsList)]
             Cons::<DynDim, tail> => true,
@@ -518,7 +547,7 @@ typ! {
         }
     }
 
-    pub fn AllDynDimensions<inputs>(inputs: List) -> Bit {
+    pub fn AllDynDimensions<inputs>(inputs: List) {
         match inputs {
             #[generics(tail: List)]
             Cons::<DynDimensions, tail> => AllDynDimensions(tail),
@@ -528,7 +557,7 @@ typ! {
         }
     }
 
-    pub fn AnyDynDimensions<inputs>(inputs: List) -> Bit {
+    pub fn AnyDynDimensions<inputs>(inputs: List) {
         match inputs {
             #[generics(tail: List)]
             Cons::<DynDimensions, tail> => true,
@@ -568,10 +597,14 @@ mod tests {
         let _: SameOp<FlattenOp<Dims![1, 2, 3], U0, U1>, Dims![2, 3]> = ();
         let _: SameOp<FlattenOp<Dims![1, 2, 3], U1, U1>, Dims![1, 2, 3]> = ();
         let _: SameOp<FlattenOp<Dims![1, _, 3], U0, U1>, Dims![_, 3]> = ();
-        let _: SameOp<
-            CatAnyDynOp<List![Dims![1, 2, _, _], Dims![1, _, 3, _]]>,
-            List![B0, B1, B1, B1],
-        > = ();
+        // let _: SameOp<
+        //     CatUtilOp<List![Dims![1, 2, _], Dims![1, _, 3]], tyuint!(1)>,
+        //     List![(B0, B0), (B1, B1), (B1, B0)],
+        // > = ();
+        // let _: SameOp<
+        //     CatUtilOp<List![Dims![1, 2, _], Dims![1, 2, 3]], tyuint!(1)>,
+        //     List![(B0, B0), (B0, B1), (B1, B0)],
+        // > = ();
         let _: SameOp<CatOp<List![Dims![1, 2, 3], Dims![?]], tyuint!(1)>, Dims![?]> = ();
         let _: SameOp<CatOp<List![Dims![1, 2, 3], Dims![1, 5, 3]], DynDim>, Dims![?]> = ();
         let _: SameOp<CatOp<List![Dims![2], Dims![3]], tyuint!(0)>, Dims![5]> = ();
